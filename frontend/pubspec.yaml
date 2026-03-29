@@ -1,0 +1,52 @@
+name: fabio
+description: "Fabio — FinTech Active Liveness Biometric App"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ── UI ──────────────────────────────────────────────────────────────────
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.2.1
+
+  # ── Camera & Media ─────────────────────────────────────────────────────
+  camera: ^0.11.0+2
+  image: ^4.3.0
+
+  # ── Networking ─────────────────────────────────────────────────────────
+  dio: ^5.7.0                      # REST API client
+  web_socket_channel: ^3.0.1       # WebSocket for real-time liveness frames
+
+  # ── State Management ───────────────────────────────────────────────────
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # ── Secure Storage & Auth ──────────────────────────────────────────────
+  flutter_secure_storage: ^9.2.3   # JWT token persistence
+  jwt_decoder: ^2.0.1
+
+  # ── Routing ────────────────────────────────────────────────────────────
+  go_router: ^14.6.2
+
+  # ── Utilities ──────────────────────────────────────────────────────────
+  intl: ^0.19.0                    # Number / currency formatting
+  uuid: ^4.5.1
+  logger: ^2.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  build_runner: ^2.4.13
+  riverpod_generator: ^2.6.3
+
+dependency_overrides:
+  path_provider_foundation: 2.4.0
+
+flutter:
+  uses-material-design: true

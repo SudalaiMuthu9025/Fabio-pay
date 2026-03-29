@@ -1,0 +1,17 @@
+<!-- Fabio — iOS Info.plist Additions -->
+<!-- Merge these keys into ios/Runner/Info.plist after flutter create -->
+
+<!--
+Add inside the <dict> block:
+
+<key>NSCameraUsageDescription</key>
+<string>Fabio requires camera access for Active Liveness verification during high-value transactions.</string>
+
+<key>NSAppTransportSecurity</key>
+<dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <true/>
+</dict>
+
+Note: Remove NSAllowsArbitraryLoads in production and use only HTTPS.
+-->

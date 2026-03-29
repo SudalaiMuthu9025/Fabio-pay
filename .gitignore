@@ -1,0 +1,45 @@
+# ── Python ────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+*.egg
+dist/
+build/
+.env
+venv/
+.venv/
+
+# ── Flutter / Dart ────────────────────
+frontend/.dart_tool/
+frontend/.packages
+frontend/.pub-cache/
+frontend/.pub/
+frontend/build/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/android/.gradle/
+frontend/android/app/build/
+frontend/ios/Pods/
+frontend/ios/.symlinks/
+frontend/.metadata
+
+# ── IDE ───────────────────────────────
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Node ──────────────────────────────
+node_modules/
+package-lock.json
+
+# ── Docker ────────────────────────────
+*.log
+
+# ── Temp / Scripts ────────────────────
+generate_doc.py
+build_output*.txt
