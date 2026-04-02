@@ -11,8 +11,10 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# System dependencies required by OpenCV & MediaPipe
+# System dependencies required by OpenCV, MediaPipe & Bcrypt
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        gcc \
+        python3-dev \
         libgl1 \
         libglib2.0-0t64 \
         libsm6 \

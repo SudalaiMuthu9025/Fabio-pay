@@ -15,6 +15,10 @@ from app.database import get_db
 from app.models import User
 from app.schemas import SecuritySettingsOut, SecuritySettingsUpdate
 
+import base64
+from fastapi import UploadFile, File
+from app.face_recognition import extract_face_embedding_from_b64
+
 router = APIRouter(prefix="/api/security", tags=["Security Settings"])
 
 
@@ -61,3 +65,26 @@ async def update_security_settings(
 
     await db.flush()
     return sec
+
+# ── Register Face ────────────────────────────────────────────────────────────
+@router.post("/register-face", summary="Register face for 1:1 verification")
+async def register_face(
+    image: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    contents = await image.read()
+    b64_str = base64.b64encode(contents).decode('utf-8')
+    
+    embedding = extract_face_embedding_from_b64(b64_str)
+    if not embedding:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No face detected or could not extract features. Ensure the photo is clear and well-lit.",
+        )
+    
+    current_user.face_encoding = embedding
+    db.add(current_user)
+    await db.flush()
+    
+    return {"status": "success", "message": "Face registered successfully."}

@@ -1,42 +1,47 @@
 /// Fabio — Auth Service
 ///
-/// Secure JWT token persistence using flutter_secure_storage.
+/// Secure session token persistence using flutter_secure_storage.
+/// Replaces JWT-based auth with server-side session tokens.
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:jwt_decoder/jwt_decoder.dart';
 
 class AuthService {
   static const _storage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
-  static const _tokenKey = 'fabio_access_token';
+  static const _tokenKey = 'fabio_session_token';
+  static const _userKey = 'fabio_user_json';
 
-  /// Save JWT after login
+  /// Save session token after login
   static Future<void> saveToken(String token) async {
     await _storage.write(key: _tokenKey, value: token);
   }
 
-  /// Retrieve stored JWT
+  /// Retrieve stored session token
   static Future<String?> getToken() async {
     return await _storage.read(key: _tokenKey);
   }
 
-  /// Delete JWT on logout
+  /// Delete token on logout
   static Future<void> deleteToken() async {
     await _storage.delete(key: _tokenKey);
+    await _storage.delete(key: _userKey);
   }
 
-  /// Check if user has a valid (non-expired) token
+  /// Check if user has a stored token
+  /// (Server validates expiration, we just check presence)
   static Future<bool> isLoggedIn() async {
     final token = await getToken();
-    if (token == null) return false;
-    return !JwtDecoder.isExpired(token);
+    return token != null && token.isNotEmpty;
   }
 
-  /// Decode token to get user info
-  static Future<Map<String, dynamic>?> getDecodedToken() async {
-    final token = await getToken();
-    if (token == null) return null;
-    return JwtDecoder.decode(token);
+  /// Save user info as JSON string for offline access
+  static Future<void> saveUserJson(String json) async {
+    await _storage.write(key: _userKey, value: json);
+  }
+
+  /// Get cached user JSON
+  static Future<String?> getUserJson() async {
+    return await _storage.read(key: _userKey);
   }
 }

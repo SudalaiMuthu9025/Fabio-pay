@@ -1,7 +1,8 @@
 """
 Fabio Backend — SQLAlchemy ORM Models
 ======================================
-Tables: users, bank_accounts, security_settings, transaction_logs.
+Tables: users, bank_accounts, security_settings, transaction_logs,
+        sessions, audit_logs.
 
 Design choices
 --------------
@@ -11,6 +12,7 @@ Design choices
 * **JSON column**        — `challenge_sequence` stores the biometric challenge
                            (e.g. ["Blink", "Smile", "Left"]) for full audit trail.
 * **Numeric(15, 2)**     — cent-precise money storage without floating-point drift.
+* **Session table**      — server-side session management (replaces JWT).
 """
 
 from __future__ import annotations
@@ -43,8 +45,9 @@ from app.database import Base
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class UserRole(str, enum.Enum):
-    """RBAC roles — `user` can manage own accounts; `admin` views system logs."""
+    """RBAC roles — three tiers of access."""
     USER = "user"
+    VICE_ADMIN = "vice_admin"
     ADMIN = "admin"
 
 
@@ -74,6 +77,7 @@ class User(Base):
     * 1 : N  → BankAccount
     * 1 : 1  → SecuritySettings
     * 1 : N  → TransactionLog
+    * 1 : N  → Session
     """
 
     __tablename__ = "users"
@@ -90,7 +94,31 @@ class User(Base):
         String(255), unique=True, index=True, nullable=False
     )
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    hashed_password: Mapped[str] = mapped_column(Text, nullable=False)
+    hashed_password: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # ── Google OAuth ─────────────────────────────────────────────────────
+    google_id: Mapped[str | None] = mapped_column(
+        String(255), unique=True, nullable=True, index=True
+    )
+    avatar_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # ── Liveness / Face Verification ─────────────────────────────────────
+    liveness_verified: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False,
+        doc="Whether the user has passed face liveness verification"
+    )
+    last_liveness_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+        doc="Timestamp of last successful liveness verification"
+    )
+    liveness_count: Mapped[int] = mapped_column(
+        Integer, default=0, nullable=False,
+        doc="Total number of successful liveness verifications"
+    )
+    face_encoding: Mapped[list[float] | None] = mapped_column(
+        JSON, nullable=True,
+        doc="MediaPipe Face Mesh normalized landmark vector for 1:1 face verification"
+    )
 
     # ── RBAC ──────────────────────────────────────────────────────────────
     role: Mapped[UserRole] = mapped_column(
@@ -128,9 +156,93 @@ class User(Base):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    sessions: Mapped[list["Session"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="noload",
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.email!r} role={self.role.value}>"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  SESSIONS (Server-Side Session Management — replaces JWT)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class Session(Base):
+    """
+    Server-side session record. Each login creates a session row.
+    The token is signed with HMAC-SHA256 and the hash is stored here.
+    """
+
+    __tablename__ = "sessions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    token_hash: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+    # ── Relationship ──────────────────────────────────────────────────────
+    user: Mapped["User"] = relationship(back_populates="sessions")
+
+    def __repr__(self) -> str:
+        return f"<Session {self.id!r} user={self.user_id!r} active={self.is_active}>"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  AUDIT LOGS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class AuditLog(Base):
+    """
+    Immutable audit record for security-relevant actions.
+    Tracks logins, role changes, session terminations, etc.
+    """
+
+    __tablename__ = "audit_logs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    action: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    target_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    target_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    details: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    def __repr__(self) -> str:
+        return f"<AuditLog {self.action!r} user={self.user_id!r}>"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -140,44 +252,41 @@ class User(Base):
 class BankAccount(Base):
     """
     A user may have multiple bank accounts; one can be marked `is_primary`.
-
-    Relationships
-    -------------
-    * N : 1  → User (owner)
-    * 1 : N  → TransactionLog (as source account)
     """
 
     __tablename__ = "bank_accounts"
 
-    # ── Primary Key ───────────────────────────────────────────────────────
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
     )
-
-    # ── Foreign Key ───────────────────────────────────────────────────────
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-
-    # ── Account Details ───────────────────────────────────────────────────
     account_number: Mapped[str] = mapped_column(
-        String(34), unique=True, nullable=False  # IBAN max length = 34
+        String(34), unique=True, nullable=False
     )
     bank_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    ifsc_code: Mapped[str | None] = mapped_column(
+        String(11), nullable=True,
+        doc="IFSC code for Indian bank branches"
+    )
     balance: Mapped[Decimal] = mapped_column(
         Numeric(15, 2), default=Decimal("0.00"), nullable=False
     )
     currency: Mapped[str] = mapped_column(
-        String(3), default="INR", nullable=False  # ISO 4217
+        String(3), default="INR", nullable=False
     )
     is_primary: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_verified: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False,
+        doc="Admin-verified bank account"
+    )
 
-    # ── Timestamps ────────────────────────────────────────────────────────
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -188,7 +297,6 @@ class BankAccount(Base):
         nullable=False,
     )
 
-    # ── Relationships ─────────────────────────────────────────────────────
     owner: Mapped["User"] = relationship(back_populates="bank_accounts")
     outgoing_transactions: Mapped[list["TransactionLog"]] = relationship(
         back_populates="from_account",
@@ -201,32 +309,24 @@ class BankAccount(Base):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  SECURITY SETTINGS (Risk-Based Authentication Config)
+#  SECURITY SETTINGS
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class SecuritySettings(Base):
     """
     Per-user security configuration.
-
-    `threshold_amount` drives the risk-based auth flow:
+    threshold_amount drives risk-based auth:
       • transfer < threshold → standard PIN
-      • transfer ≥ threshold → Fabio Active Liveness (biometric challenge)
-
-    Relationships
-    -------------
-    * 1 : 1  → User
+      • transfer ≥ threshold → biometric challenge
     """
 
     __tablename__ = "security_settings"
 
-    # ── Primary Key ───────────────────────────────────────────────────────
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
     )
-
-    # ── Foreign Key (unique → 1:1) ───────────────────────────────────────
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
@@ -234,37 +334,24 @@ class SecuritySettings(Base):
         nullable=False,
         index=True,
     )
-
-    # ── Threshold for Risk-Based Auth ─────────────────────────────────────
     threshold_amount: Mapped[Decimal] = mapped_column(
         Numeric(15, 2),
-        default=Decimal("10000.00"),  # Default: ₹10,000
+        default=Decimal("10000.00"),
         nullable=False,
     )
-
-    # ── PIN Auth ──────────────────────────────────────────────────────────
     pin_hash: Mapped[str] = mapped_column(Text, nullable=False)
-
-    # ── Biometric Flags ───────────────────────────────────────────────────
     biometric_enabled: Mapped[bool] = mapped_column(
         Boolean, default=True, nullable=False
     )
-
-    # ── Lockout Policy ────────────────────────────────────────────────────
-    max_attempts: Mapped[int] = mapped_column(
-        Integer, default=5, nullable=False
-    )
+    max_attempts: Mapped[int] = mapped_column(Integer, default=5, nullable=False)
     lockout_duration_minutes: Mapped[int] = mapped_column(
-        Integer, default=30, nullable=False  # minutes
+        Integer, default=30, nullable=False
     )
-    failed_attempts: Mapped[int] = mapped_column(
-        Integer, default=0, nullable=False
-    )
+    failed_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     locked_until: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None
     )
 
-    # ── Timestamps ────────────────────────────────────────────────────────
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -275,7 +362,6 @@ class SecuritySettings(Base):
         nullable=False,
     )
 
-    # ── Relationship ──────────────────────────────────────────────────────
     user: Mapped["User"] = relationship(back_populates="security_settings")
 
     def __repr__(self) -> str:
@@ -286,32 +372,21 @@ class SecuritySettings(Base):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#  TRANSACTION LOGS (Audit Trail)
+#  TRANSACTION LOGS
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class TransactionLog(Base):
     """
     Immutable audit record for every transfer attempt.
-
-    Stores the authentication method used, biometric challenge sequence,
-    risk score, and final status for compliance & fraud analysis.
-
-    Relationships
-    -------------
-    * N : 1  → User
-    * N : 1  → BankAccount (source)
     """
 
     __tablename__ = "transaction_logs"
 
-    # ── Primary Key ───────────────────────────────────────────────────────
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
     )
-
-    # ── Foreign Keys ──────────────────────────────────────────────────────
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
@@ -324,19 +399,14 @@ class TransactionLog(Base):
         nullable=True,
         index=True,
     )
-    # Destination may be external — store as plain string, no FK.
     to_account_identifier: Mapped[str | None] = mapped_column(
         String(34), nullable=True
     )
-
-    # ── Transfer Details ──────────────────────────────────────────────────
     amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
     currency: Mapped[str] = mapped_column(
         String(3), default="INR", nullable=False
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-    # ── Authentication & Security ─────────────────────────────────────────
     auth_method: Mapped[AuthMethod] = mapped_column(
         Enum(AuthMethod, name="auth_method", create_constraint=True),
         nullable=False,
@@ -347,26 +417,18 @@ class TransactionLog(Base):
         nullable=False,
     )
     risk_score: Mapped[Decimal | None] = mapped_column(
-        Numeric(5, 2), nullable=True  # 0.00 – 100.00
+        Numeric(5, 2), nullable=True
     )
-
-    # ── Biometric Challenge Audit ─────────────────────────────────────────
-    # Stores the full challenge sequence + per-action results.
-    # Example: {"sequence": ["Blink","Smile","Left"], "results": [true,true,true]}
     challenge_sequence: Mapped[dict | None] = mapped_column(
         JSON, nullable=True, default=None
     )
-
-    # ── Device / Network Metadata ─────────────────────────────────────────
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # ── Timestamps ────────────────────────────────────────────────────────
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    # ── Relationships ─────────────────────────────────────────────────────
     user: Mapped["User"] = relationship(back_populates="transaction_logs")
     from_account: Mapped["BankAccount | None"] = relationship(
         back_populates="outgoing_transactions"

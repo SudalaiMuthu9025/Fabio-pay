@@ -1,14 +1,19 @@
 # Fabio Backend - Core Dependencies
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
-sqlalchemy[asyncio]==2.0.36
+sqlalchemy[asyncio]==2.0.35
 asyncpg==0.30.0
 pydantic-settings==2.7.1
 email-validator==2.2.0
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
+passlib[argon2]==1.7.4
+argon2-cffi==23.1.0
 python-multipart==0.0.20
 websockets==14.1
 opencv-python-headless==4.10.0.84
 mediapipe==0.10.20
 numpy==1.26.4
+# Face Recognition: uses MediaPipe Face Mesh (already listed above)
+# Google OAuth token verification
+google-auth==2.35.0
+# Async HTTP client (Google API calls)
+httpx==0.28.0

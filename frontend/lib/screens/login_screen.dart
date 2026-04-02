@@ -66,7 +66,16 @@ class _LoginScreenState extends State<LoginScreen>
         _passwordController.text,
       );
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/dashboard');
+
+      // Role-based routing
+      final user = await ApiService.getMe();
+      if (!mounted) return;
+
+      if (user.role == 'ADMIN' || user.role == 'VICE_ADMIN') {
+        Navigator.pushReplacementNamed(context, '/admin');
+      } else {
+        Navigator.pushReplacementNamed(context, '/dashboard');
+      }
     } catch (e) {
       setState(() {
         _errorMessage = 'Invalid email or password';

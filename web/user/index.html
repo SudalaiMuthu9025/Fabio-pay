@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Fabio User Portal — Manage your accounts, transfers, and security settings">
+    <title>Fabio — User Portal</title>
+    <link rel="stylesheet" href="../shared/styles.css">
+    <style>
+        .account-card { position: relative; }
+        .account-card .primary-badge { position: absolute; top: 12px; right: 12px; }
+        .account-balance { font-size: 28px; font-weight: 800; margin: 8px 0 4px; }
+        .account-bank { font-size: 13px; color: var(--text-muted); }
+        .account-number { font-family: 'Courier New', monospace; font-size: 14px; color: var(--text-secondary); letter-spacing: 1px; margin-top: 12px; }
+        .transfer-summary { background: var(--bg-glass); border-radius: var(--radius-md); padding: 16px; margin-top: 16px; }
+        .transfer-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
+        .transfer-row .label { color: var(--text-muted); }
+        .transfer-row .value { color: var(--text-primary); font-weight: 600; }
+        .security-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid var(--border-subtle); }
+        .security-item:last-child { border-bottom: none; }
+        .security-label { font-weight: 600; color: var(--text-primary); }
+        .security-desc { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+        .toggle { width: 44px; height: 24px; background: var(--bg-glass); border-radius: 12px; position: relative; cursor: pointer; transition: background 0.3s; border: 1px solid var(--border-subtle); }
+        .toggle.active { background: rgba(56, 239, 125, 0.3); border-color: rgba(56, 239, 125, 0.4); }
+        .toggle::after { content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%; background: var(--text-secondary); top: 2px; left: 2px; transition: transform 0.3s; }
+        .toggle.active::after { transform: translateX(20px); background: #38ef7d; }
+        .register-link { text-align: center; margin-top: 16px; font-size: 13px; color: var(--text-muted); }
+        .register-link a { color: var(--text-accent); cursor: pointer; }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-container">
+        <div class="card login-card">
+            <div class="login-header">
+                <div class="login-logo" style="background:linear-gradient(135deg,#11998e,#38ef7d)">F</div>
+                <h1 class="login-title">Welcome to Fabio</h1>
+                <p class="login-subtitle">Secure FinTech Banking Portal</p>
+            </div>
+            <form id="login-form">
+                <div class="form-group">
+                    <label class="form-label" for="login-email">Email</label>
+                    <input class="form-input" type="email" id="login-email" placeholder="you@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="login-password">Password</label>
+                    <input class="form-input" type="password" id="login-password" placeholder="Enter password" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px;background:linear-gradient(135deg,#11998e,#38ef7d)" id="login-btn">Sign In</button>
+            </form>
+            <div class="divider">or</div>
+            <button class="btn-google" onclick="googleSignIn()">
+                <svg viewBox="0 0 24 24" width="20" height="20"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                Sign in with Google
+            </button>
+            <div class="register-link">Don't have an account? <a onclick="showRegister()">Register</a></div>
+            <p id="login-error" style="color:#ff6a00;font-size:13px;margin-top:12px;text-align:center;display:none"></p>
+        </div>
+    </div>
+
+    <!-- Register Screen -->
+    <div id="register-screen" class="login-container" style="display:none">
+        <div class="card login-card">
+            <div class="login-header">
+                <div class="login-logo" style="background:linear-gradient(135deg,#11998e,#38ef7d)">F</div>
+                <h1 class="login-title">Create Account</h1>
+                <p class="login-subtitle">Join Fabio — secure banking</p>
+            </div>
+            <form id="register-form">
+                <div class="form-group">
+                    <label class="form-label">Full Name</label>
+                    <input class="form-input" type="text" id="reg-name" placeholder="John Doe" required minlength="2">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input class="form-input" type="email" id="reg-email" placeholder="you@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input class="form-input" type="password" id="reg-password" placeholder="Min 8 characters" required minlength="8">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Transaction PIN (4-6 digits)</label>
+                    <input class="form-input" type="password" id="reg-pin" placeholder="1234" required pattern="\d{4,6}" maxlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;margin-top:8px;background:linear-gradient(135deg,#11998e,#38ef7d)" id="reg-btn">Create Account</button>
+            </form>
+            <div class="register-link">Already have an account? <a onclick="showLogin()">Sign In</a></div>
+            <p id="reg-error" style="color:#ff6a00;font-size:13px;margin-top:12px;text-align:center;display:none"></p>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app-screen" class="app-layout" style="display:none">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo" style="background:linear-gradient(135deg,#11998e,#38ef7d)">F</div>
+                <div>
+                    <div class="sidebar-title" style="background:linear-gradient(135deg,#11998e,#38ef7d);-webkit-background-clip:text;background-clip:text">Fabio</div>
+                    <div class="sidebar-subtitle">Banking Portal</div>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-section-label">Banking</div>
+                <div class="nav-item active" data-page="accounts" onclick="navigate('accounts')">
+                    <span class="nav-icon">🏦</span> Accounts
+                </div>
+                <div class="nav-item" data-page="transfer" onclick="navigate('transfer')">
+                    <span class="nav-icon">💸</span> Transfer
+                </div>
+                <div class="nav-item" data-page="history" onclick="navigate('history')">
+                    <span class="nav-icon">📜</span> History
+                </div>
+                <div class="nav-section-label">Settings</div>
+                <div class="nav-item" data-page="security" onclick="navigate('security')">
+                    <span class="nav-icon">🔐</span> Security
+                </div>
+                <div class="nav-item" data-page="sessions" onclick="navigate('sessions')">
+                    <span class="nav-icon">📱</span> Sessions
+                </div>
+                <div class="nav-item" data-page="profile" onclick="navigate('profile')">
+                    <span class="nav-icon">👤</span> Profile
+                </div>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-card" onclick="logout()">
+                    <div class="user-avatar" id="sidebar-avatar" style="background:linear-gradient(135deg,#11998e,#38ef7d)"></div>
+                    <div class="user-info">
+                        <div class="user-name" id="sidebar-name">User</div>
+                        <div class="user-role" id="sidebar-role">user</div>
+                    </div>
+                    <span style="color:var(--text-muted);font-size:18px" title="Logout">⏻</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <!-- Accounts Page -->
+            <div id="page-accounts" class="page fade-in">
+                <div class="page-header">
+                    <h1 class="page-title" style="background:linear-gradient(135deg,#11998e,#38ef7d);-webkit-background-clip:text;background-clip:text">My Accounts</h1>
+                    <p class="page-description">Manage your bank accounts</p>
+                </div>
+                <div class="toolbar">
+                    <div></div>
+                    <button class="btn btn-primary btn-sm" style="background:linear-gradient(135deg,#11998e,#38ef7d)" onclick="openModal('add-account-modal')">+ Add Account</button>
+                </div>
+                <div class="card-grid" id="accounts-grid">
+                    <div class="card" style="text-align:center;padding:40px"><div class="spinner" style="margin:0 auto"></div></div>
+                </div>
+            </div>
+
+            <!-- Transfer Page -->
+            <div id="page-transfer" class="page" style="display:none">
+                <div class="page-header">
+                    <h1 class="page-title" style="background:linear-gradient(135deg,#11998e,#38ef7d);-webkit-background-clip:text;background-clip:text">Send Money</h1>
+                    <p class="page-description">Transfer funds securely</p>
+                </div>
+                <div class="card" style="max-width:560px">
+                    <form id="transfer-form">
+                        <div class="form-group">
+                            <label class="form-label">From Account</label>
+                            <select class="form-select" id="tf-from" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Recipient Account Number</label>
+                            <input class="form-input" type="text" id="tf-to" placeholder="Enter account number" required minlength="8" maxlength="34">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Amount (₹)</label>
+                            <input class="form-input" type="number" id="tf-amount" placeholder="0.00" required min="0.01" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Description (optional)</label>
+                            <input class="form-input" type="text" id="tf-desc" placeholder="Payment for...">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Transaction PIN</label>
+                            <input class="form-input" type="password" id="tf-pin" placeholder="Enter your PIN" maxlength="6">
+                            <small style="color:var(--text-muted);font-size:11px;margin-top:4px;display:block">Required for amounts below your security threshold</small>
+                        </div>
+                        <button type="submit" class="btn btn-success" style="width:100%" id="tf-btn">Send Money</button>
+                    </form>
+                    <div id="transfer-result" style="display:none;margin-top:16px"></div>
+                </div>
+            </div>
+
+            <!-- History Page -->
+            <div id="page-history" class="page" style="display:none">
+                <div class="page-header">
+                    <h1 class="page-title" style="background:linear-gradient(135deg,#11998e,#38ef7d);-webkit-background-clip:text;background-clip:text">Transaction History</h1>
+                    <p class="page-description">Your recent transactions</p>
+                </div>
+                <div class="card">
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Date</th><th>Amount</th><th>To</th><th>Status</th><th>Auth</th><th>Note</th></tr></thead>
+                            <tbody id="history-table-body">
+                                <tr><td colspan="6" class="empty-state"><div class="spinner" style="margin:20px auto"></div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Page -->
+            <div id="page-security" class="page" style="display:none">
+                <div class="page-header">
+                    <h1 class="page-title" style="background:linear-gradient(135deg,#11998e,#38ef7d);-webkit-background-clip:text;background-clip:text">Security Settings</h1>
+                    <p class="page-description">Configure your account security</p>
+                </div>
+                <div class="card" style="max-width:600px" id="security-card">
+                    <div class="security-item">
+                        <div><div class="security-label">Biometric Verification</div><div class="security-desc">Use face liveness for high-value transfers</div></div>
+                        <div class="toggle" id="biometric-toggle" onclick="toggleBiometric()"></div>
+                    </div>
+                    <div class="security-item">
+                        <div><div class="security-label">Security Threshold</div><div class="security-desc">Transactions above this amount require biometric verification</div></div>
+                        <div style="display:flex;gap:8px;align-items:center">
+                            <span style="color:var(--text-muted)">₹</span>
+                            <input class="form-input" type="number" id="threshold-input" style="width:140px" min="0" step="100">
+                            <button class="btn btn-ghost btn-sm" onclick="updateThreshold()">Save</button>
+                        </div>
+                    </div>
+                    <div class="security-item">
+                        <div><div class="security-label">Change PIN</div><div class="security-desc">Update your transaction PIN</div></div>
+                        <button class="btn btn-ghost btn-sm" onclick="openModal('pin-modal')">Change</button>
+                    </div>
+                    <div class="security-item">
+                        <div><div class="security-label">Failed Attempts</div><div class="security-desc">Number of failed authentication attempts</div></div>
+                        <span class="badge badge-default" id="failed-attempts">0</span>
+                    </div>
+                    <div class="security-item">
+                        <div><div class="security-label">Lockout Duration</div><div class="security-desc">Account lockout after max failed attempts</div></div>
+                        <span style="color:var(--text-secondary)" id="lockout-mins">30 min</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sessions Page -->
+            <div id="page-sessions" class="page" style="display:none">
+                <div class="page-header">
+                    <h1 class="page-title" style="background:linear-gradient(135deg,#11998e,#38ef7d);-webkit-background-clip:text;background-clip:text">Active Sessions</h1>
+                    <p class="page-description">Manage your active login sessions</p>
+                </div>
+                <div class="card">
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Device</th><th>IP Address</th><th>Started</th><th>Expires</th><th>Actions</th></tr></thead>
+                            <tbody id="sessions-table-body">
+                                <tr><td colspan="5" class="empty-state"><div class="spinner" style="margin:20px auto"></div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Page -->
+            <div id="page-profile" class="page" style="display:none">
+                <div class="page-header">
+                    <h1 class="page-title" style="background:linear-gradient(135deg,#11998e,#38ef7d);-webkit-background-clip:text;background-clip:text">My Profile</h1>
+                    <p class="page-description">View and update your profile information</p>
+                </div>
+                <div class="card" style="max-width:500px">
+                    <div style="text-align:center;margin-bottom:24px">
+                        <div class="user-avatar" id="profile-avatar" style="width:72px;height:72px;font-size:28px;margin:0 auto 12px;background:linear-gradient(135deg,#11998e,#38ef7d)"></div>
+                        <div id="profile-name-display" style="font-size:20px;font-weight:700;color:var(--text-primary)"></div>
+                        <div id="profile-email-display" style="font-size:14px;color:var(--text-muted);margin-top:4px"></div>
+                        <div style="margin-top:8px" id="profile-google-status"></div>
+                    </div>
+                    <form id="profile-form">
+                        <div class="form-group">
+                            <label class="form-label">Full Name</label>
+                            <input class="form-input" type="text" id="profile-name" required minlength="2">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input class="form-input" type="email" id="profile-email" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width:100%;background:linear-gradient(135deg,#11998e,#38ef7d)">Save Changes</button>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Account Modal -->
+    <div class="modal-overlay" id="add-account-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Add Bank Account</h3>
+                <button class="modal-close" onclick="closeModal('add-account-modal')">✕</button>
+            </div>
+            <form id="add-account-form">
+                <div class="form-group">
+                    <label class="form-label">Account Number</label>
+                    <input class="form-input" type="text" id="aa-number" required minlength="8" maxlength="34" placeholder="e.g. 1234567890123456">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Bank Name</label>
+                    <input class="form-input" type="text" id="aa-bank" required minlength="2" placeholder="e.g. State Bank of India">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Initial Balance (₹)</label>
+                    <input class="form-input" type="number" id="aa-balance" value="0" min="0" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Currency</label>
+                    <select class="form-select" id="aa-currency"><option value="INR">INR (₹)</option><option value="USD">USD ($)</option><option value="EUR">EUR (€)</option></select>
+                </div>
+                <div style="display:flex;gap:12px;justify-content:flex-end">
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('add-account-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-success">Add Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Change PIN Modal -->
+    <div class="modal-overlay" id="pin-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Change Transaction PIN</h3>
+                <button class="modal-close" onclick="closeModal('pin-modal')">✕</button>
+            </div>
+            <form id="pin-form">
+                <div class="form-group">
+                    <label class="form-label">New PIN (4-6 digits)</label>
+                    <input class="form-input" type="password" id="new-pin" required pattern="\d{4,6}" maxlength="6" placeholder="Enter new PIN">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Confirm PIN</label>
+                    <input class="form-input" type="password" id="confirm-pin" required pattern="\d{4,6}" maxlength="6" placeholder="Confirm new PIN">
+                </div>
+                <div style="display:flex;gap:12px;justify-content:flex-end">
+                    <button type="button" class="btn btn-ghost" onclick="closeModal('pin-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="background:linear-gradient(135deg,#11998e,#38ef7d)">Update PIN</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="../shared/api.js"></script>
+    <script>
+        let currentPage = 'accounts';
+        let accountsData = [];
+        let securityData = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (getToken() && getUser()) { showApp(); }
+        });
+
+        // ── Auth ──────────────────────────────────────────────────────────────
+        function showLogin() {
+            document.getElementById('login-screen').style.display = 'flex';
+            document.getElementById('register-screen').style.display = 'none';
+        }
+        function showRegister() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('register-screen').style.display = 'flex';
+        }
+
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('login-btn');
+            btn.textContent = 'Signing in...'; btn.disabled = true;
+            document.getElementById('login-error').style.display = 'none';
+            try {
+                const data = await POST('/api/auth/login', {
+                    email: document.getElementById('login-email').value,
+                    password: document.getElementById('login-password').value,
+                });
+                setToken(data.session_token);
+                const user = await GET('/api/users/me');
+                setUser(user);
+                showApp();
+            } catch (err) {
+                const el = document.getElementById('login-error');
+                el.textContent = err.message; el.style.display = 'block';
+            }
+            btn.textContent = 'Sign In'; btn.disabled = false;
+        });
+
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('reg-btn');
+            btn.textContent = 'Creating...'; btn.disabled = true;
+            document.getElementById('reg-error').style.display = 'none';
+            try {
+                await POST('/api/auth/register', {
+                    full_name: document.getElementById('reg-name').value,
+                    email: document.getElementById('reg-email').value,
+                    password: document.getElementById('reg-password').value,
+                    pin: document.getElementById('reg-pin').value,
+                });
+                showToast('Account created! Please sign in.', 'success');
+                showLogin();
+                document.getElementById('login-email').value = document.getElementById('reg-email').value;
+            } catch (err) {
+                const el = document.getElementById('reg-error');
+                el.textContent = err.message; el.style.display = 'block';
+            }
+            btn.textContent = 'Create Account'; btn.disabled = false;
+        });
+
+        async function googleSignIn() {
+            showToast('Google Sign-In requires GOOGLE_CLIENT_ID configuration', 'info');
+        }
+
+        function showApp() {
+            const user = getUser();
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('register-screen').style.display = 'none';
+            document.getElementById('app-screen').style.display = 'flex';
+            document.getElementById('sidebar-name').textContent = user.full_name;
+            document.getElementById('sidebar-role').textContent = user.role.replace('_', ' ');
+            document.getElementById('sidebar-avatar').textContent = getUserInitials(user.full_name);
+            loadAccounts();
+        }
+
+        function navigate(page) {
+            currentPage = page;
+            showPage(page);
+            const loaders = {
+                accounts: loadAccounts, transfer: loadTransferForm, history: loadHistory,
+                security: loadSecurity, sessions: loadSessions, profile: loadProfile,
+            };
+            loaders[page]?.();
+        }
+
+        // ── Accounts ──────────────────────────────────────────────────────────
+        async function loadAccounts() {
+            try {
+                accountsData = await GET('/api/accounts/');
+                renderAccounts();
+            } catch (err) { showToast('Failed to load accounts: ' + err.message, 'error'); }
+        }
+
+        function renderAccounts() {
+            const grid = document.getElementById('accounts-grid');
+            if (!accountsData.length) {
+                grid.innerHTML = '<div class="card" style="text-align:center;padding:40px"><div class="empty-state-icon">🏦</div><div class="empty-state-text">No accounts yet. Add your first bank account.</div></div>';
+                return;
+            }
+            grid.innerHTML = accountsData.map(a => `
+                <div class="card account-card">
+                    ${a.is_primary ? '<span class="badge badge-success primary-badge">Primary</span>' : ''}
+                    <div class="account-bank">${escapeHtml(a.bank_name)}</div>
+                    <div class="account-balance">${formatCurrency(a.balance, a.currency)}</div>
+                    <div class="account-number">${escapeHtml(a.account_number)}</div>
+                    <div style="margin-top:16px;display:flex;gap:8px">
+                        <button class="btn btn-ghost btn-sm" onclick="deleteAccount('${a.id}')">🗑 Remove</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('add-account-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                await POST('/api/accounts/', {
+                    account_number: document.getElementById('aa-number').value,
+                    bank_name: document.getElementById('aa-bank').value,
+                    balance: parseFloat(document.getElementById('aa-balance').value) || 0,
+                    currency: document.getElementById('aa-currency').value,
+                    is_primary: accountsData.length === 0,
+                });
+                showToast('Account added successfully', 'success');
+                closeModal('add-account-modal');
+                e.target.reset();
+                loadAccounts();
+            } catch (err) { showToast('Failed: ' + err.message, 'error'); }
+        });
+
+        async function deleteAccount(id) {
+            if (!confirm('Remove this account? This cannot be undone.')) return;
+            try {
+                await DELETE(`/api/accounts/${id}`);
+                showToast('Account removed', 'success');
+                loadAccounts();
+            } catch (err) { showToast('Failed: ' + err.message, 'error'); }
+        }
+
+        // ── Transfer ──────────────────────────────────────────────────────────
+        async function loadTransferForm() {
+            if (!accountsData.length) await loadAccounts();
+            const sel = document.getElementById('tf-from');
+            sel.innerHTML = accountsData.map(a =>
+                `<option value="${a.id}">${escapeHtml(a.bank_name)} — ${escapeHtml(a.account_number)} (${formatCurrency(a.balance, a.currency)})</option>`
+            ).join('');
+            if (!accountsData.length) {
+                sel.innerHTML = '<option value="">No accounts — add one first</option>';
+            }
+        }
+
+        document.getElementById('transfer-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('tf-btn');
+            btn.textContent = 'Processing...'; btn.disabled = true;
+            const resultDiv = document.getElementById('transfer-result');
+            resultDiv.style.display = 'none';
+
+            const body = {
+                from_account_id: document.getElementById('tf-from').value,
+                to_account_identifier: document.getElementById('tf-to').value,
+                amount: parseFloat(document.getElementById('tf-amount').value),
+                description: document.getElementById('tf-desc').value || null,
+            };
+            const pin = document.getElementById('tf-pin').value;
+            if (pin) body.pin = pin;
+
+            try {
+                const result = await POST('/api/transactions/transfer', body);
+                resultDiv.style.display = 'block';
+                if (result.status === 'success') {
+                    resultDiv.innerHTML = `<div class="card" style="border-color:rgba(56,239,125,0.3);background:rgba(56,239,125,0.05)"><div style="font-size:24px;margin-bottom:8px">✅</div><div style="font-weight:700;color:#38ef7d;margin-bottom:4px">${result.message}</div><div style="font-size:13px;color:var(--text-muted)">Transaction ID: ${result.transaction_id.slice(0,8)}… | Auth: ${result.auth_method}</div></div>`;
+                    e.target.reset();
+                    loadAccounts();
+                } else if (result.status === 'pending') {
+                    resultDiv.innerHTML = `<div class="card" style="border-color:rgba(245,87,108,0.3);background:rgba(245,87,108,0.05)"><div style="font-size:24px;margin-bottom:8px">🔐</div><div style="font-weight:700;color:#f5576c;margin-bottom:4px">${result.message}</div><div style="font-size:13px;color:var(--text-muted)">Challenge: ${result.challenge_sequence?.join(', ') || 'N/A'}</div><div style="font-size:12px;color:var(--text-muted);margin-top:8px">Complete the biometric challenge on your mobile app to finalize this transfer.</div></div>`;
+                }
+            } catch (err) {
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `<div class="card" style="border-color:rgba(255,106,0,0.3);background:rgba(255,106,0,0.05)"><div style="font-size:24px;margin-bottom:8px">❌</div><div style="font-weight:700;color:#ff6a00">${err.message}</div></div>`;
+            }
+            btn.textContent = 'Send Money'; btn.disabled = false;
+        });
+
+        // ── History ───────────────────────────────────────────────────────────
+        async function loadHistory() {
+            try {
+                const txns = await GET('/api/transactions/');
+                const tbody = document.getElementById('history-table-body');
+                if (!txns.length) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="empty-state-icon">📜</div><div class="empty-state-text">No transactions yet</div></td></tr>';
+                    return;
+                }
+                tbody.innerHTML = txns.map(t => `
+                    <tr>
+                        <td>${formatDate(t.created_at)}</td>
+                        <td style="font-weight:600;color:var(--text-primary)">${formatCurrency(t.amount, t.currency)}</td>
+                        <td style="font-size:12px">${escapeHtml(t.to_account_identifier) || '—'}</td>
+                        <td>${getTxnStatusBadge(t.status)}</td>
+                        <td><span class="badge badge-info">${t.auth_method}</span></td>
+                        <td style="font-size:12px;color:var(--text-muted)">${escapeHtml(t.description) || '—'}</td>
+                    </tr>
+                `).join('');
+            } catch (err) { showToast('Failed to load history: ' + err.message, 'error'); }
+        }
+
+        // ── Security ──────────────────────────────────────────────────────────
+        async function loadSecurity() {
+            try {
+                securityData = await GET('/api/security/');
+                document.getElementById('biometric-toggle').classList.toggle('active', securityData.biometric_enabled);
+                document.getElementById('threshold-input').value = securityData.threshold_amount;
+                document.getElementById('failed-attempts').textContent = securityData.failed_attempts;
+                document.getElementById('lockout-mins').textContent = securityData.lockout_duration_minutes + ' min';
+            } catch (err) { showToast('Failed to load security settings: ' + err.message, 'error'); }
+        }
+
+        async function toggleBiometric() {
+            const toggle = document.getElementById('biometric-toggle');
+            const newVal = !toggle.classList.contains('active');
+            try {
+                await PATCH('/api/security/', { biometric_enabled: newVal });
+                toggle.classList.toggle('active', newVal);
+                showToast(`Biometric ${newVal ? 'enabled' : 'disabled'}`, 'success');
+            } catch (err) { showToast('Failed: ' + err.message, 'error'); }
+        }
+
+        async function updateThreshold() {
+            const val = parseFloat(document.getElementById('threshold-input').value);
+            try {
+                await PATCH('/api/security/', { threshold_amount: val });
+                showToast('Threshold updated', 'success');
+            } catch (err) { showToast('Failed: ' + err.message, 'error'); }
+        }
+
+        document.getElementById('pin-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const pin = document.getElementById('new-pin').value;
+            const confirm = document.getElementById('confirm-pin').value;
+            if (pin !== confirm) { showToast('PINs do not match', 'error'); return; }
+            try {
+                await PATCH('/api/security/', { pin: pin });
+                showToast('PIN updated successfully', 'success');
+                closeModal('pin-modal');
+                e.target.reset();
+            } catch (err) { showToast('Failed: ' + err.message, 'error'); }
+        });
+
+        // ── Sessions ──────────────────────────────────────────────────────────
+        async function loadSessions() {
+            try {
+                const sessions = await GET('/api/auth/sessions');
+                const tbody = document.getElementById('sessions-table-body');
+                if (!sessions.length) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><div class="empty-state-icon">📱</div><div class="empty-state-text">No active sessions</div></td></tr>';
+                    return;
+                }
+                tbody.innerHTML = sessions.map(s => `
+                    <tr>
+                        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${escapeHtml(s.user_agent)}">${escapeHtml(s.user_agent) || 'Unknown device'}</td>
+                        <td>${escapeHtml(s.ip_address) || '—'}</td>
+                        <td>${formatDate(s.created_at)}</td>
+                        <td>${formatDate(s.expires_at)}</td>
+                        <td><button class="btn btn-danger btn-sm" onclick="revokeSession('${s.id}')">Revoke</button></td>
+                    </tr>
+                `).join('');
+            } catch (err) { showToast('Failed to load sessions: ' + err.message, 'error'); }
+        }
+
+        async function revokeSession(id) {
+            if (!confirm('Revoke this session? You will be logged out from that device.')) return;
+            try {
+                await DELETE(`/api/auth/sessions/${id}`);
+                showToast('Session revoked', 'success');
+                loadSessions();
+            } catch (err) { showToast('Failed: ' + err.message, 'error'); }
+        }
+
+        // ── Profile ───────────────────────────────────────────────────────────
+        function loadProfile() {
+            const user = getUser();
+            document.getElementById('profile-avatar').textContent = getUserInitials(user.full_name);
+            if (user.avatar_url) {
+                document.getElementById('profile-avatar').innerHTML = `<img src="${escapeHtml(user.avatar_url)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+            }
+            document.getElementById('profile-name-display').textContent = user.full_name;
+            document.getElementById('profile-email-display').textContent = user.email;
+            document.getElementById('profile-name').value = user.full_name;
+            document.getElementById('profile-email').value = user.email;
+            document.getElementById('profile-google-status').innerHTML = user.google_id
+                ? '<span class="badge badge-success">Google Connected</span>'
+                : '<span class="badge badge-default">No Google Account</span>';
+        }
+
+        document.getElementById('profile-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const updated = await PATCH('/api/users/me', {
+                    full_name: document.getElementById('profile-name').value,
+                    email: document.getElementById('profile-email').value,
+                });
+                setUser(updated);
+                document.getElementById('sidebar-name').textContent = updated.full_name;
+                loadProfile();
+                showToast('Profile updated', 'success');
+            } catch (err) { showToast('Failed: ' + err.message, 'error'); }
+        });
+
+        // ── Logout ────────────────────────────────────────────────────────────
+        async function logout() {
+            try { await POST('/api/auth/logout', {}); } catch {}
+            clearToken(); location.reload();
+        }
+    </script>
+</body>
+</html>

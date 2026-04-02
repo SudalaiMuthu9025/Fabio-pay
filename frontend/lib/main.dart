@@ -13,6 +13,7 @@ import 'screens/dashboard_screen.dart';
 import 'screens/transfer_screen.dart';
 import 'screens/liveness_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/admin_dashboard_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,6 +55,7 @@ class FabioApp extends StatelessWidget {
         '/transfer': (context) => const TransferScreen(),
         '/liveness': (context) => const LivenessScreen(),
         '/settings': (context) => const SettingsScreen(),
+        '/admin': (context) => const AdminDashboardScreen(),
       },
     );
   }

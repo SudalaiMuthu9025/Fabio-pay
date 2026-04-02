@@ -22,10 +22,13 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://fabio:fabio@localhost:5432/fabio_db"
     )
 
-    # ── JWT / Auth ────────────────────────────────────────────────────────
+    # ── Session Auth ─────────────────────────────────────────────────────
     SECRET_KEY: str = "CHANGE-ME-in-production-use-openssl-rand-hex-32"
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    SESSION_EXPIRE_HOURS: int = 24
+
+    # ── Google OAuth 2.0 ─────────────────────────────────────────────────
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
 
     # ── Biometric Engine ──────────────────────────────────────────────────
     EAR_THRESHOLD: float = 0.2        # Eye-Aspect-Ratio below this = blink
@@ -36,6 +39,7 @@ class Settings(BaseSettings):
     # ── General ───────────────────────────────────────────────────────────
     APP_NAME: str = "Fabio"
     DEBUG: bool = True
+    ALLOWED_ORIGINS: str = "*"
 
 
 settings = Settings()

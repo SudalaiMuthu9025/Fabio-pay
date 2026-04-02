@@ -3,7 +3,7 @@ Fabio Backend — Users Router
 ==============================
 GET   /api/users/me   — own profile (User)
 PATCH /api/users/me   — update own profile (User)
-GET   /api/users/     — list all users (Admin only)
+GET   /api/users/     — list all users (Admin / Vice Admin)
 """
 
 from __future__ import annotations
@@ -60,13 +60,22 @@ async def update_me(
     return current_user
 
 
-# ── List All Users (Admin) ───────────────────────────────────────────────────
+# ── List All Users (Admin & Vice Admin) ──────────────────────────────────────
 @router.get(
     "/",
     response_model=list[UserOut],
-    summary="List all users (Admin only)",
-    dependencies=[Depends(require_role(UserRole.ADMIN))],
+    summary="List all users (Admin & Vice Admin)",
+    dependencies=[Depends(require_role(UserRole.ADMIN, UserRole.VICE_ADMIN))],
 )
-async def list_users(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).order_by(User.created_at.desc()))
+async def list_users(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    query = select(User).order_by(User.created_at.desc())
+
+    # Vice admins can see all users but not other admins
+    if current_user.role == UserRole.VICE_ADMIN:
+        query = query.where(User.role != UserRole.ADMIN)
+
+    result = await db.execute(query)
     return result.scalars().all()

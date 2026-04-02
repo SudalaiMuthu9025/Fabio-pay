@@ -26,8 +26,10 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: "postgresql+asyncpg://fabio:fabio@db:5432/fabio_db"
-      SECRET_KEY: "dev-only-change-in-production"
+      SECRET_KEY: "a7f3c8e2d1b94f6a8c3e5d7b0f2a4e6c9d1b3f5a7c8e0d2b4f6a8c3e5d7b0f2a"
       DEBUG: "true"
+    volumes:
+      - ./web:/app/web:ro
     depends_on:
       db:
         condition: service_healthy

@@ -13,6 +13,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../config/api_config.dart';
 import '../config/theme.dart';
+import '../services/auth_service.dart';
 
 class LivenessScreen extends StatefulWidget {
   const LivenessScreen({super.key});
@@ -88,9 +89,18 @@ class _LivenessScreenState extends State<LivenessScreen>
     }
   }
 
-  void _connectWebSocket() {
+  void _connectWebSocket() async {
     try {
-      _channel = WebSocketChannel.connect(Uri.parse(ApiConfig.wsUrl));
+      final token = await AuthService.getToken();
+      if (token == null) {
+        setState(() {
+          _status = 'error';
+          _message = 'Not authenticated. Please login again.';
+        });
+        return;
+      }
+
+      _channel = WebSocketChannel.connect(Uri.parse(ApiConfig.wsUrl(token)));
 
       _channel!.stream.listen(
         (data) {

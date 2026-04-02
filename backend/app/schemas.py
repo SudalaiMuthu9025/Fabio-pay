@@ -1,7 +1,7 @@
 """
 Fabio Backend — Pydantic Schemas (Request / Response Models)
 =============================================================
-Grouped by domain: Auth, User, BankAccount, Security, Transaction.
+Grouped by domain: Auth, User, BankAccount, Security, Transaction, Admin.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, model_validator
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -32,16 +32,16 @@ class UserLogin(BaseModel):
     password: str
 
 
-class Token(BaseModel):
-    """JWT response payload."""
-    access_token: str
+class SessionToken(BaseModel):
+    """Session token response (replaces JWT Token)."""
+    session_token: str
     token_type: str = "bearer"
+    expires_in_hours: int = 24
 
 
-class TokenData(BaseModel):
-    """Decoded JWT claims."""
-    user_id: uuid.UUID
-    role: str
+class GoogleAuthRequest(BaseModel):
+    """POST /api/auth/google"""
+    id_token: str = Field(..., description="Google ID token from client-side sign-in")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -57,13 +57,59 @@ class UserOut(BaseModel):
     full_name: str
     role: str
     is_active: bool
+    google_id: Optional[str] = None
+    avatar_url: Optional[str] = None
     created_at: datetime
+    is_face_registered: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def compute_face_registered(cls, data):
+        """Set is_face_registered based on whether face_encoding exists."""
+        # Handle both dict and ORM object
+        if isinstance(data, dict):
+            encoding = data.get("face_encoding")
+        else:
+            encoding = getattr(data, "face_encoding", None)
+        if isinstance(data, dict):
+            data["is_face_registered"] = bool(encoding)
+        else:
+            # For ORM objects, we can't mutate; Pydantic will handle it
+            pass
+        return data
 
 
 class UserUpdate(BaseModel):
     """PATCH /api/users/me"""
     full_name: Optional[str] = Field(None, min_length=2, max_length=255)
     email: Optional[EmailStr] = None
+
+
+class UserRoleUpdate(BaseModel):
+    """PATCH /api/admin/users/{id}/role"""
+    role: str = Field(..., pattern=r"^(user|vice_admin|admin)$")
+
+
+class UserStatusUpdate(BaseModel):
+    """PATCH /api/admin/users/{id}/status"""
+    is_active: bool
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  SESSION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class SessionOut(BaseModel):
+    """Active session response."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    user_id: uuid.UUID
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    is_active: bool
+    created_at: datetime
+    expires_at: datetime
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -74,6 +120,7 @@ class AccountCreate(BaseModel):
     """POST /api/accounts/"""
     account_number: str = Field(..., min_length=8, max_length=34)
     bank_name: str = Field(..., min_length=2, max_length=255)
+    ifsc_code: Optional[str] = Field(None, max_length=11, pattern=r"^[A-Z]{4}0[A-Z0-9]{6}$")
     balance: Decimal = Field(default=Decimal("0.00"), ge=0)
     currency: str = Field(default="INR", max_length=3)
     is_primary: bool = False
@@ -93,9 +140,11 @@ class AccountOut(BaseModel):
     user_id: uuid.UUID
     account_number: str
     bank_name: str
+    ifsc_code: Optional[str] = None
     balance: Decimal
     currency: str
     is_primary: bool
+    is_verified: bool = False
     created_at: datetime
 
 
@@ -156,7 +205,7 @@ class TransferOut(BaseModel):
     status: str
     auth_method: str
     message: str
-    challenge_sequence: Optional[list[str]] = None  # populated when biometric required
+    challenge_sequence: Optional[list[str]] = None
 
 
 class TransactionLogOut(BaseModel):
@@ -175,4 +224,34 @@ class TransactionLogOut(BaseModel):
     risk_score: Optional[Decimal] = None
     challenge_sequence: Optional[dict] = None
     ip_address: Optional[str] = None
+    created_at: datetime
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  ADMIN DASHBOARD
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class DashboardStats(BaseModel):
+    """GET /api/admin/dashboard"""
+    total_users: int
+    active_users: int
+    total_transactions: int
+    successful_transactions: int
+    failed_transactions: int
+    pending_transactions: int
+    active_sessions: int
+    total_volume: Decimal = Decimal("0.00")
+
+
+class AuditLogOut(BaseModel):
+    """Audit log entry."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    user_id: Optional[uuid.UUID] = None
+    action: str
+    target_type: Optional[str] = None
+    target_id: Optional[str] = None
+    ip_address: Optional[str] = None
+    details: Optional[dict] = None
     created_at: datetime

@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import '../services/auth_service.dart';
+import '../services/api_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -54,7 +55,22 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     if (isLoggedIn) {
-      Navigator.pushReplacementNamed(context, '/dashboard');
+      // Validate session server-side
+      try {
+        final user = await ApiService.getMe();
+        if (!mounted) return;
+        // Role-based routing
+        if (user.role == 'ADMIN' || user.role == 'VICE_ADMIN') {
+          Navigator.pushReplacementNamed(context, '/admin');
+        } else {
+          Navigator.pushReplacementNamed(context, '/dashboard');
+        }
+      } catch (_) {
+        // Token expired/invalid → force re-login
+        await AuthService.deleteToken();
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/login');
+      }
     } else {
       Navigator.pushReplacementNamed(context, '/login');
     }
