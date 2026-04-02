@@ -63,7 +63,22 @@ def _get_face_mesh():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Run once on startup: create DB tables if they don't exist."""
+    import sys
+    import os
+    # Ensure root folder is in sys.path so seed_admin can be discovered safely
+    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if root_dir not in sys.path:
+        sys.path.append(root_dir)
+
     await init_db()
+    
+    try:
+        from seed_admin import seed_admin
+        await seed_admin()
+        print("Production Admin Seeding Completed.")
+    except Exception as e:
+        print(f"Admin Seeding bypassed/failed: {e}")
+
     yield
 
 
