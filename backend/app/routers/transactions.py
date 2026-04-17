@@ -30,7 +30,7 @@ from app.schemas import TransactionLogOut, TransferOut, TransferRequest
 router = APIRouter(prefix="/api/transactions", tags=["Transactions"])
 
 # ── Available biometric challenges ────────────────────────────────────────────
-CHALLENGE_ACTIONS: list[str] = ["Blink", "Smile", "Left", "Right"]
+CHALLENGE_ACTIONS: list[str] = ["Blink", "Smile", "Smirk"]
 
 
 def _generate_challenge(count: int = 3) -> list[str]:

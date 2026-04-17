@@ -488,10 +488,8 @@ class _LivenessScreenState extends State<LivenessScreen>
         return Icons.visibility_off_rounded;
       case 'Smile':
         return Icons.sentiment_very_satisfied_rounded;
-      case 'Left':
-        return Icons.arrow_back_rounded;
-      case 'Right':
-        return Icons.arrow_forward_rounded;
+      case 'Smirk':
+        return Icons.sentiment_satisfied_alt_rounded;
       default:
         return Icons.face_rounded;
     }
@@ -500,13 +498,11 @@ class _LivenessScreenState extends State<LivenessScreen>
   String _getActionText(String action) {
     switch (action) {
       case 'Blink':
-        return 'Blink Twice';
+        return 'Blink Now';
       case 'Smile':
-        return 'Smile Now';
-      case 'Left':
-        return 'Turn Head Left';
-      case 'Right':
-        return 'Turn Head Right';
+        return 'Smile Wide';
+      case 'Smirk':
+        return 'Smirk Now';
       default:
         return action;
     }

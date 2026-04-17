@@ -30,13 +30,12 @@ from datetime import datetime, timezone
 from app.auth import get_user_from_token
 from app.face_recognition import extract_face_embedding_from_b64, verify_face_match
 from app.liveness import (
-    HEAD_POSE_IDX,
     LEFT_EYE_IDX,
     MOUTH_IDX,
     RIGHT_EYE_IDX,
     detect_blink,
     detect_smile,
-    estimate_head_pose,
+    detect_smirk,
 )
 from app.routers import accounts, auth, security, transactions, users
 from app.routers import admin as admin_router
@@ -300,21 +299,18 @@ async def websocket_liveness(
             right_eye = [(lm[i].x * w, lm[i].y * h) for i in RIGHT_EYE_IDX]
             left_eye = [(lm[i].x * w, lm[i].y * h) for i in LEFT_EYE_IDX]
             mouth = [(lm[i].x * w, lm[i].y * h) for i in MOUTH_IDX]
-            head_pts = [(lm[idx].x, lm[idx].y) for idx in HEAD_POSE_IDX.values()]
 
             is_blinking, ear_val = detect_blink(left_eye, right_eye)
             is_smiling, mar_val = detect_smile(mouth)
-            head_data = estimate_head_pose(head_pts, w, h)
+            is_smirking, smirk_val = detect_smirk(lm, w, h)
 
             detected_action = None
             if is_blinking:
                 detected_action = "Blink"
             elif is_smiling:
                 detected_action = "Smile"
-            elif head_data["direction"] == "Left":
-                detected_action = "Left"
-            elif head_data["direction"] == "Right":
-                detected_action = "Right"
+            elif is_smirking:
+                detected_action = "Smirk"
 
             # Only advance if the detected action matches the expected one
             if detected_action and detected_action == engine.current_action:
@@ -325,7 +321,7 @@ async def websocket_liveness(
                 "detected": detected_action,
                 "ear": round(ear_val, 3),
                 "mar": round(mar_val, 3),
-                "head_direction": head_data["direction"],
+                "smirk": round(smirk_val, 3),
                 "progress": engine.progress,
                 "identity_verified": is_identity_verified,
             })

@@ -187,6 +187,69 @@ def detect_smile(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+#  Smirk Detection — Asymmetric Mouth Corner Analysis
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Additional landmark indices for smirk detection
+# Left mouth corner = 61, Right mouth corner = 291
+# Upper lip center = 13, Lower lip center = 14
+SMIRK_LEFT_CORNER = 61
+SMIRK_RIGHT_CORNER = 291
+SMIRK_UPPER_LIP = 13
+SMIRK_LOWER_LIP = 14
+SMIRK_THRESHOLD = 0.015  # Minimum asymmetry ratio for smirk detection
+
+
+def detect_smirk(
+    landmarks,
+    img_w: int,
+    img_h: int,
+    threshold: float = SMIRK_THRESHOLD,
+) -> tuple[bool, float]:
+    """
+    Detect a smirk (asymmetric one-sided smile).
+
+    A smirk occurs when one mouth corner is raised significantly higher
+    than the other relative to the mouth width.
+
+    Parameters
+    ----------
+    landmarks : MediaPipe landmark list
+    img_w, img_h : image dimensions
+    threshold : minimum asymmetry ratio
+
+    Returns
+    -------
+    (is_smirking, asymmetry_ratio)
+    """
+    try:
+        lm = landmarks
+
+        left_corner_y = lm[SMIRK_LEFT_CORNER].y * img_h
+        right_corner_y = lm[SMIRK_RIGHT_CORNER].y * img_h
+        left_corner_x = lm[SMIRK_LEFT_CORNER].x * img_w
+        right_corner_x = lm[SMIRK_RIGHT_CORNER].x * img_w
+
+        # Mouth width for normalisation
+        mouth_width = calculate_euclidean_distance(
+            (left_corner_x, left_corner_y),
+            (right_corner_x, right_corner_y),
+        )
+
+        if mouth_width < 1e-6:
+            return False, 0.0
+
+        # Height difference between corners (positive = left corner higher)
+        corner_diff = abs(left_corner_y - right_corner_y)
+        asymmetry = corner_diff / mouth_width
+
+        return asymmetry > threshold, asymmetry
+
+    except (IndexError, AttributeError):
+        return False, 0.0
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 #  Head Pose Estimation — Left / Right / Center
 # ═══════════════════════════════════════════════════════════════════════════════
 

@@ -20,8 +20,7 @@ class ChallengeAction(str, Enum):
     """Supported liveness challenge actions."""
     BLINK = "Blink"
     SMILE = "Smile"
-    LEFT = "Left"
-    RIGHT = "Right"
+    SMIRK = "Smirk"
 
 
 class ChallengeStatus(str, Enum):
