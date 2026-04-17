@@ -85,6 +85,11 @@ async def dashboard(db: AsyncSession = Depends(get_db)):
         )
     ) or Decimal("0.00")
 
+    # Face-registered users
+    face_registered_users = await db.scalar(
+        select(func.count(User.id)).where(User.face_encoding.isnot(None))
+    ) or 0
+
     return DashboardStats(
         total_users=total_users,
         active_users=active_users,
@@ -94,6 +99,7 @@ async def dashboard(db: AsyncSession = Depends(get_db)):
         pending_transactions=pending_txns,
         active_sessions=active_sessions,
         total_volume=total_volume,
+        face_registered_users=face_registered_users,
     )
 
 
@@ -387,3 +393,46 @@ async def revoke_all_user_sessions(
     await db.flush()
 
     return {"message": f"Revoked {count} session(s) for user {user_id}"}
+
+
+# ── Reset User Face Data (Admin) ─────────────────────────────────────────────
+@router.delete(
+    "/users/{user_id}/face-data",
+    summary="Reset face data for a user (Admin only)",
+    dependencies=[Depends(require_role(UserRole.ADMIN))],
+)
+async def reset_user_face_data(
+    user_id: uuid.UUID,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    if not user.face_encoding:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User has no face data registered",
+        )
+
+    user.face_encoding = None
+
+    # Audit log
+    audit = AuditLog(
+        user_id=current_user.id,
+        action="admin.reset_face_data",
+        target_type="user",
+        target_id=str(user_id),
+        ip_address=request.client.host if request.client else None,
+        details={"target_email": user.email},
+    )
+    db.add(audit)
+    await db.flush()
+
+    return {"message": f"Face data reset for user {user.email}"}

@@ -54,6 +54,12 @@ class _DashboardScreenState extends State<DashboardScreen>
         _isLoading = false;
       });
       _fadeController.forward();
+
+      // ── Mandatory face registration gate ──────────────────────────
+      // Every user must register their face for biometric verification.
+      if (_user != null && !_user!.isFaceRegistered) {
+        _promptMandatoryFaceRegistration();
+      }
     } catch (e) {
       if (mounted) {
         // Check if session expired (401)
@@ -72,6 +78,69 @@ class _DashboardScreenState extends State<DashboardScreen>
         );
       }
     }
+  }
+
+  void _promptMandatoryFaceRegistration() {
+    // Use post-frame callback to avoid showing dialog during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => PopScope(
+          canPop: false,
+          child: AlertDialog(
+            backgroundColor: AppTheme.surfaceCard,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Row(
+              children: [
+                Icon(Icons.face_unlock_rounded,
+                    color: AppTheme.accent, size: 28),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text('Setup Face ID',
+                      style: TextStyle(color: Colors.white, fontSize: 18)),
+                ),
+              ],
+            ),
+            content: const Text(
+              'Welcome! For your security, Fabio requires you to register '
+              'your face. This is used for identity verification during '
+              'transactions.\n\nThis is a one-time setup.',
+              style: TextStyle(color: AppTheme.textSecondary, height: 1.5),
+            ),
+            actions: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    final result =
+                        await Navigator.pushNamed(context, '/face-register');
+                    if (result == true) {
+                      _loadData(); // Refresh user data
+                    } else {
+                      // User dismissed without registering — prompt again
+                      if (mounted) _promptMandatoryFaceRegistration();
+                    }
+                  },
+                  icon: const Icon(Icons.face_retouching_natural, size: 20),
+                  label: const Text('Register Now',
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
   }
 
   Future<void> _logout() async {
@@ -339,7 +408,10 @@ class _DashboardScreenState extends State<DashboardScreen>
               icon: Icons.send_rounded,
               label: 'Transfer',
               color: AppTheme.primary,
-              onTap: () => Navigator.pushNamed(context, '/transfer'),
+              onTap: () async {
+                final result = await Navigator.pushNamed(context, '/transfer');
+                if (result == true) _loadData();
+              },
             ),
             const SizedBox(width: 12),
             _actionButton(
@@ -350,10 +422,16 @@ class _DashboardScreenState extends State<DashboardScreen>
             ),
             const SizedBox(width: 12),
             _actionButton(
-              icon: Icons.fingerprint_rounded,
-              label: 'Liveness',
-              color: AppTheme.success,
-              onTap: () => Navigator.pushNamed(context, '/liveness'),
+              icon: Icons.face_unlock_rounded,
+              label: 'Face ID',
+              color: _user?.isFaceRegistered == true
+                  ? AppTheme.success
+                  : AppTheme.warning,
+              onTap: () async {
+                final result =
+                    await Navigator.pushNamed(context, '/face-register');
+                if (result == true) _loadData();
+              },
             ),
             const SizedBox(width: 12),
             _actionButton(

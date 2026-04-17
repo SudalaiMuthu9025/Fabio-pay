@@ -311,6 +311,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: AppTheme.primary,
                     onTap: () => Navigator.pushNamed(context, '/liveness'),
                   ),
+                  const SizedBox(height: 10),
+
+                  // Face Registration Button
+                  _settingsButton(
+                    icon: Icons.face_unlock_rounded,
+                    label: _user?.isFaceRegistered == true
+                        ? 'Update Face Data'
+                        : 'Register Face',
+                    subtitle: _user?.isFaceRegistered == true
+                        ? 'Face registered ✓ — tap to update'
+                        : 'Required for biometric transactions',
+                    color: _user?.isFaceRegistered == true
+                        ? AppTheme.success
+                        : AppTheme.warning,
+                    onTap: () async {
+                      final result = await Navigator.pushNamed(
+                          context, '/face-register');
+                      if (result == true) _loadData(); // Refresh status
+                    },
+                  ),
                   const SizedBox(height: 24),
 
                   // ── Threshold Setting ──────────────────────────────
@@ -369,6 +389,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   // ── Security Status ──────────────────────────────
                   Text('Security Status', style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 14),
+                  _buildStatusRow(
+                    icon: Icons.face_unlock_rounded,
+                    label: 'Face Data',
+                    value: _user?.isFaceRegistered == true ? 'Registered' : 'Not Registered',
+                    color: _user?.isFaceRegistered == true ? AppTheme.success : AppTheme.warning,
+                  ),
+                  const SizedBox(height: 10),
                   _buildStatusRow(
                     icon: Icons.fingerprint,
                     label: 'Biometric',

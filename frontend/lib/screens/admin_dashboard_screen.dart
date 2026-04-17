@@ -128,6 +128,49 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     }
   }
 
+  Future<void> _resetUserFace(User user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Reset Face Data', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'This will remove face registration data for ${user.fullName}. '
+          'They will need to re-register their face for biometric transactions.',
+          style: const TextStyle(color: AppTheme.textSecondary, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.error),
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await ApiService.resetUserFace(user.id);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Face data reset for ${user.fullName}'),
+          backgroundColor: AppTheme.success,
+        ),
+      );
+      _loadData();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to reset face data'), backgroundColor: AppTheme.error),
+      );
+    }
+  }
+
   Future<void> _logout() async {
     await ApiService.logout();
     if (!mounted) return;
@@ -260,6 +303,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             const SizedBox(width: 12),
             _statCard('Active Sessions', _stats!.activeSessions.toString(),
                 Icons.devices_rounded, AppTheme.warning),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            _statCard('Face Registered', _stats!.faceRegisteredUsers.toString(),
+                Icons.face_unlock_rounded, AppTheme.success),
+            const SizedBox(width: 12),
+            _statCard('Pending Txns', _stats!.pendingTransactions.toString(),
+                Icons.schedule_rounded, AppTheme.warning),
           ],
         ),
         const SizedBox(height: 12),
@@ -593,6 +646,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   tooltip: 'Revoke Sessions',
                   onTap: () => _revokeAllSessions(user),
                 ),
+                if (user.isFaceRegistered) ...[
+                  const SizedBox(width: 6),
+                  _tileAction(
+                    icon: Icons.face_retouching_off,
+                    color: AppTheme.error,
+                    tooltip: 'Reset Face Data',
+                    onTap: () => _resetUserFace(user),
+                  ),
+                ],
               ],
             ),
           ],

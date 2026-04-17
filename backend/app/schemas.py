@@ -181,6 +181,22 @@ class SecuritySettingsOut(BaseModel):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+#  FACE VERIFICATION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class FaceVerifyResponse(BaseModel):
+    """POST /api/security/verify-face"""
+    verified: bool
+    message: str
+
+
+class FaceStatusResponse(BaseModel):
+    """GET /api/security/face-status"""
+    is_registered: bool
+    user_id: uuid.UUID
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 #  TRANSACTIONS
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -241,6 +257,7 @@ class DashboardStats(BaseModel):
     pending_transactions: int
     active_sessions: int
     total_volume: Decimal = Decimal("0.00")
+    face_registered_users: int = 0
 
 
 class AuditLogOut(BaseModel):

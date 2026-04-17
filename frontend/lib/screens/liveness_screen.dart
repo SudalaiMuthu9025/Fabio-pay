@@ -35,6 +35,7 @@ class _LivenessScreenState extends State<LivenessScreen>
   String _message = 'Initializing camera...';
   double _remainingTime = 15.0;
   List<bool> _results = [];
+  bool _transactionCompleted = false;
 
   Timer? _timer;
   late AnimationController _pulseController;
@@ -42,6 +43,9 @@ class _LivenessScreenState extends State<LivenessScreen>
   late AnimationController _actionFadeController;
 
   bool _isStreaming = false;
+
+  // Route arguments from TransferScreen
+  String? _transactionId;
 
   @override
   void initState() {
@@ -59,6 +63,16 @@ class _LivenessScreenState extends State<LivenessScreen>
     );
 
     _initCamera();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Read route arguments passed from TransferScreen
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map<String, dynamic>) {
+      _transactionId ??= args['transactionId'] as String?;
+    }
   }
 
   Future<void> _initCamera() async {
@@ -100,7 +114,11 @@ class _LivenessScreenState extends State<LivenessScreen>
         return;
       }
 
-      _channel = WebSocketChannel.connect(Uri.parse(ApiConfig.wsUrl(token)));
+      final wsUrl = _transactionId != null && _transactionId!.isNotEmpty
+          ? '${ApiConfig.wsUrl(token)}&transaction_id=$_transactionId'
+          : ApiConfig.wsUrl(token);
+
+      _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
 
       _channel!.stream.listen(
         (data) {
@@ -168,11 +186,17 @@ class _LivenessScreenState extends State<LivenessScreen>
 
       case 'result':
         final status = msg['status'];
+        final txnCompleted = msg['transaction_completed'] == true;
         setState(() {
           _status = status;
-          _message = status == 'passed'
-              ? '✅ Verification passed!'
-              : '❌ Verification failed';
+          _transactionCompleted = txnCompleted;
+          if (status == 'passed') {
+            _message = txnCompleted
+                ? '✅ Verification passed — transfer completed!'
+                : '✅ Verification passed!';
+          } else {
+            _message = msg['message'] ?? '❌ Verification failed';
+          }
         });
         _stopStreaming();
         _timer?.cancel();

@@ -4,6 +4,7 @@
 /// and global 401 auto-logout handling.
 
 import 'dart:convert';
+import 'dart:io';
 import 'package:dio/dio.dart';
 import '../config/api_config.dart';
 import '../models/models.dart';
@@ -180,6 +181,40 @@ class ApiService {
     await _dio.delete('${ApiConfig.sessions}/$sessionId');
   }
 
+  // ── Face Registration & Verification ────────────────────────────────
+
+  /// Register face: upload a selfie image to store face embedding in DB.
+  static Future<Map<String, dynamic>> registerFace(String imagePath) async {
+    final formData = FormData.fromMap({
+      'image': await MultipartFile.fromFile(imagePath, filename: 'face.jpg'),
+    });
+    final response = await _dio.post(
+      ApiConfig.registerFace,
+      data: formData,
+      options: Options(contentType: 'multipart/form-data'),
+    );
+    return Map<String, dynamic>.from(response.data);
+  }
+
+  /// Verify face: upload a selfie and check against stored embedding.
+  static Future<Map<String, dynamic>> verifyFace(String imagePath) async {
+    final formData = FormData.fromMap({
+      'image': await MultipartFile.fromFile(imagePath, filename: 'verify.jpg'),
+    });
+    final response = await _dio.post(
+      ApiConfig.verifyFace,
+      data: formData,
+      options: Options(contentType: 'multipart/form-data'),
+    );
+    return Map<String, dynamic>.from(response.data);
+  }
+
+  /// Check if the current user has registered a face.
+  static Future<bool> getFaceStatus() async {
+    final response = await _dio.get(ApiConfig.faceStatus);
+    return response.data['is_registered'] == true;
+  }
+
   // ── Health ────────────────────────────────────────────────────────────
 
   static Future<bool> checkHealth() async {
@@ -241,6 +276,10 @@ class ApiService {
 
   static Future<void> revokeUserSessions(String userId) async {
     await _dio.delete(ApiConfig.adminRevokeSessions(userId));
+  }
+
+  static Future<void> resetUserFace(String userId) async {
+    await _dio.delete(ApiConfig.adminResetFace(userId));
   }
 
   static Future<List<SessionInfo>> getAdminSessions({int limit = 100}) async {

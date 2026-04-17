@@ -28,6 +28,7 @@ class _TransferScreenState extends State<TransferScreen> {
 
   List<BankAccount> _accounts = [];
   SecuritySettings? _settings;
+  User? _user;
   BankAccount? _selectedAccount;
   bool _isLoading = true;
   bool _isSending = false;
@@ -43,11 +44,13 @@ class _TransferScreenState extends State<TransferScreen> {
       final results = await Future.wait([
         ApiService.getAccounts(),
         ApiService.getSecuritySettings(),
+        ApiService.getMe(),
       ]);
       if (!mounted) return;
       setState(() {
         _accounts = results[0] as List<BankAccount>;
         _settings = results[1] as SecuritySettings;
+        _user = results[2] as User;
         if (_accounts.isNotEmpty) {
           _selectedAccount =
               _accounts.firstWhere((a) => a.isPrimary, orElse: () => _accounts.first);
@@ -69,7 +72,12 @@ class _TransferScreenState extends State<TransferScreen> {
       // Low risk → PIN dialog
       _showPinDialog(amount);
     } else {
-      // High risk → initiate with biometric and go to liveness
+      // High risk → check if face is registered first
+      if (_user?.isFaceRegistered != true) {
+        _showFaceRequiredDialog();
+        return;
+      }
+      // Proceed with biometric challenge
       setState(() => _isSending = true);
       try {
         final result = await ApiService.initiateTransfer(
@@ -91,8 +99,13 @@ class _TransferScreenState extends State<TransferScreen> {
             },
           );
 
-          if (passed == true && mounted) {
-            _showSuccess();
+          if (mounted) {
+            if (passed == true) {
+              _showSuccess();
+            } else {
+              setState(() => _isSending = false);
+              _showError('Verification failed — transfer cancelled.');
+            }
           }
         }
       } catch (e) {
@@ -187,6 +200,55 @@ class _TransferScreenState extends State<TransferScreen> {
       ),
     );
     Navigator.pop(context, true);
+  }
+
+  void _showFaceRequiredDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.face_unlock_rounded, color: AppTheme.warning, size: 28),
+            SizedBox(width: 12),
+            Text('Face Registration Required',
+                style: TextStyle(color: Colors.white, fontSize: 18)),
+          ],
+        ),
+        content: const Text(
+          'High-value transfers require biometric verification. '
+          'You must register your face data before proceeding.\n\n'
+          'This is a one-time setup for secure identity verification.',
+          style: TextStyle(color: AppTheme.textSecondary, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppTheme.textSecondary)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final result =
+                  await Navigator.pushNamed(context, '/face-register');
+              if (result == true) {
+                // Reload user data to get updated face status
+                _loadData();
+              }
+            },
+            icon: const Icon(Icons.face_retouching_natural, size: 18),
+            label: const Text('Register Now'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showError(String msg) {

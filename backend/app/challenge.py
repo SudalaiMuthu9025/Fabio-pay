@@ -112,7 +112,8 @@ class ChallengeEngine:
         Submit a detected facial action from the biometric engine.
 
         Returns True if the action matched the expected one.
-        If wrong action → immediate FAIL.
+        Non-matching actions are silently ignored (users commonly make
+        incidental facial movements like micro-blinks).
         If timed out → TIMED_OUT.
         """
         # Check timer first
@@ -128,9 +129,7 @@ class ChallengeEngine:
             return False
 
         if detected_action != expected:
-            # Temporal logic: wrong order = instant failure
-            self.status = ChallengeStatus.FAILED
-            self.results.append(False)
+            # Ignore non-matching detections — don't auto-fail
             return False
 
         # Correct action

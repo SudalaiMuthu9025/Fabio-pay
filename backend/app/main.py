@@ -187,28 +187,50 @@ async def health():
 #  WebSocket — Active Liveness Verification
 # ═══════════════════════════════════════════════════════════════════════════════
 
+from app.models import BankAccount, TransactionLog, TransactionStatus
+from sqlalchemy import select as sa_select
+
 @app.websocket("/ws/liveness")
 async def websocket_liveness(
     ws: WebSocket,
     token: str = Query(...),
-    db: AsyncSession = Depends(get_db)
+    transaction_id: str = Query(default=""),
+    db: AsyncSession = Depends(get_db),
 ):
     await ws.accept()
 
-    # 1. Authenticate WebSocket 
+    # 1. Authenticate via token
     user = await get_user_from_token(token, db)
     if not user:
         await ws.send_json({"type": "error", "message": "Authentication failed"})
         await ws.close()
         return
-        
-    engine = ChallengeEngine()
-    progress = engine.start()
-    
-    # 2. Setup Verification Flags
-    is_identity_verified = False if user.face_encoding else True # If no face enrolled, skip identity (fail open for simple usage, or fail closed based on config)
-    # Actually, we should enforce identity verification if enrolled:
+
+    # 2. Load the pending transaction (if transaction_id provided)
+    pending_txn: TransactionLog | None = None
+    if transaction_id:
+        txn_result = await db.execute(
+            sa_select(TransactionLog).where(
+                TransactionLog.id == transaction_id,
+                TransactionLog.user_id == user.id,
+                TransactionLog.status == TransactionStatus.PENDING,
+            )
+        )
+        pending_txn = txn_result.scalar_one_or_none()
+
+    # 3. Build challenge — use the transaction's stored sequence if available
+    if pending_txn and pending_txn.challenge_sequence:
+        stored_seq = pending_txn.challenge_sequence.get("sequence", [])
+        engine = ChallengeEngine(count=len(stored_seq))
+        engine.sequence = stored_seq  # Use exact same sequence
+    else:
+        engine = ChallengeEngine()
+
+    engine.start()
+
+    # 4. Identity verification flags
     enrolled_embedding = user.face_encoding
+    is_identity_verified = not bool(enrolled_embedding)  # skip if no face enrolled
 
     await ws.send_json({
         "type": "challenge",
@@ -216,12 +238,13 @@ async def websocket_liveness(
         "timeout": engine.timeout,
         "current_action": engine.current_action,
         "identity_verified": is_identity_verified,
+        "has_transaction": pending_txn is not None,
     })
 
     face_mesh = _get_face_mesh()
 
     try:
-        while engine.status.value == "in_progress":
+        while engine.status == ChallengeStatus.IN_PROGRESS:
             data = await ws.receive_text()
             payload = json.loads(data)
 
@@ -247,22 +270,30 @@ async def websocket_liveness(
                     "progress": engine.progress,
                 })
                 continue
-                
-            # Identity Verification (1:1 Match) block
+
+            # ── Identity Verification (1:1 face match) ────────────────────
             if enrolled_embedding and not is_identity_verified:
                 live_embedding = extract_face_embedding_from_b64(frame_b64)
                 if live_embedding is None:
                     await ws.send_json({"type": "feedback", "message": "Analyzing face..."})
                     continue
-                
+
                 is_match = verify_face_match(live_embedding, enrolled_embedding)
                 if is_match:
                     is_identity_verified = True
                 else:
-                    await ws.send_json({"type": "error", "message": "Face does not match registered owner."})
+                    # Send as result/failed so frontend properly exits
                     engine.status = ChallengeStatus.FAILED
+                    await ws.send_json({
+                        "type": "result",
+                        "status": "failed",
+                        "message": "Face does not match registered identity.",
+                        "sequence": engine.sequence,
+                        "results": engine.results,
+                    })
                     break
 
+            # ── Liveness challenge detection ──────────────────────────────
             landmarks = results.multi_face_landmarks[0]
             lm = landmarks.landmark
 
@@ -285,6 +316,7 @@ async def websocket_liveness(
             elif head_data["direction"] == "Right":
                 detected_action = "Right"
 
+            # Only advance if the detected action matches the expected one
             if detected_action and detected_action == engine.current_action:
                 engine.submit_action(detected_action)
 
@@ -305,23 +337,60 @@ async def websocket_liveness(
     except WebSocketDisconnect:
         engine.status = ChallengeStatus.FAILED
 
-    # ── Persist liveness result to DB ─────────────────────────────────────
-    if engine.status == ChallengeStatus.PASSED:
-        try:
+    # ═════════════════════════════════════════════════════════════════════
+    #  Post-verification: persist results & complete/fail the transaction
+    # ═════════════════════════════════════════════════════════════════════
+    transaction_completed = False
+
+    try:
+        if engine.status == ChallengeStatus.PASSED:
+            # Update user liveness stats
             user.liveness_verified = True
             user.last_liveness_at = datetime.now(timezone.utc)
             user.liveness_count = (user.liveness_count or 0) + 1
+
+            # ── Complete the pending transaction ──────────────────────────
+            if pending_txn:
+                # Re-check balance (may have changed since initiation)
+                acct_result = await db.execute(
+                    sa_select(BankAccount).where(
+                        BankAccount.id == pending_txn.from_account_id
+                    )
+                )
+                account = acct_result.scalar_one_or_none()
+
+                if account and account.balance >= pending_txn.amount:
+                    account.balance -= pending_txn.amount
+                    pending_txn.status = TransactionStatus.SUCCESS
+                    transaction_completed = True
+                else:
+                    pending_txn.status = TransactionStatus.FAILED
+                    pending_txn.description = (pending_txn.description or "") + " [Insufficient balance at settlement]"
+
             await db.flush()
             await db.commit()
-        except Exception:
-            pass  # Non-blocking — don't fail the WS response
 
+        elif engine.status in (ChallengeStatus.FAILED, ChallengeStatus.TIMED_OUT):
+            # Mark the pending transaction as failed
+            if pending_txn:
+                pending_txn.status = TransactionStatus.FAILED
+                await db.flush()
+                await db.commit()
+
+    except Exception:
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+
+    # ── Send final result to client ───────────────────────────────────────
     try:
         await ws.send_json({
             "type": "result",
             "status": engine.status.value,
             "sequence": engine.sequence,
             "results": engine.results,
+            "transaction_completed": transaction_completed,
         })
     except Exception:
         pass

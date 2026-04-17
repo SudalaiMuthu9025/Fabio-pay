@@ -243,6 +243,7 @@ class AdminDashboardStats {
   final int pendingTransactions;
   final int activeSessions;
   final double totalVolume;
+  final int faceRegisteredUsers;
 
   AdminDashboardStats({
     required this.totalUsers,
@@ -253,6 +254,7 @@ class AdminDashboardStats {
     required this.pendingTransactions,
     required this.activeSessions,
     required this.totalVolume,
+    required this.faceRegisteredUsers,
   });
 
   factory AdminDashboardStats.fromJson(Map<String, dynamic> json) =>
@@ -265,5 +267,6 @@ class AdminDashboardStats {
         pendingTransactions: json['pending_transactions'] ?? 0,
         activeSessions: json['active_sessions'] ?? 0,
         totalVolume: double.tryParse(json['total_volume'].toString()) ?? 0.0,
+        faceRegisteredUsers: json['face_registered_users'] ?? 0,
       );
 }
