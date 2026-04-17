@@ -69,13 +69,14 @@ class UserOut(BaseModel):
         # Handle both dict and ORM object
         if isinstance(data, dict):
             encoding = data.get("face_encoding")
-        else:
-            encoding = getattr(data, "face_encoding", None)
-        if isinstance(data, dict):
             data["is_face_registered"] = bool(encoding)
         else:
-            # For ORM objects, we can't mutate; Pydantic will handle it
-            pass
+            encoding = getattr(data, "face_encoding", None)
+            # For ORM objects, inject computed field into the validation data
+            try:
+                data.is_face_registered = bool(encoding)
+            except AttributeError:
+                pass
         return data
 
 
