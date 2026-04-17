@@ -23,6 +23,7 @@ from fastapi.staticfiles import StaticFiles
 from app.challenge import ChallengeEngine, ChallengeStatus
 from app.config import settings
 from app.database import init_db, get_db
+from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends, Query
 from datetime import datetime, timezone
@@ -188,7 +189,6 @@ async def health():
 # ═══════════════════════════════════════════════════════════════════════════════
 
 from app.models import BankAccount, TransactionLog, TransactionStatus
-from sqlalchemy import select as sa_select
 
 @app.websocket("/ws/liveness")
 async def websocket_liveness(
