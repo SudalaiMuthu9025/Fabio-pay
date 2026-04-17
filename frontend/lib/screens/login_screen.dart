@@ -71,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen>
       final user = await ApiService.getMe();
       if (!mounted) return;
 
-      if (user.role == 'ADMIN' || user.role == 'VICE_ADMIN') {
+      if (user.role == 'admin' || user.role == 'vice_admin') {
         Navigator.pushReplacementNamed(context, '/admin');
       } else {
         Navigator.pushReplacementNamed(context, '/dashboard');
