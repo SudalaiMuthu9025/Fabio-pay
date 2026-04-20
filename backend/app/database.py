@@ -60,6 +60,5 @@ async def get_db() -> AsyncSession:  # type: ignore[misc]
 async def init_db() -> None:
     """Create all tables that don't yet exist."""
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     print("Database tables ready.")
