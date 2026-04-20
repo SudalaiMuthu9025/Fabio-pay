@@ -58,6 +58,9 @@ async def get_db() -> AsyncSession:  # type: ignore[misc]
 
 # ── Table Creation Helper ─────────────────────────────────────────────────────
 async def init_db() -> None:
-    """Create all tables that don't yet exist.  Call once on application startup."""
+    """Drop old tables and recreate with new v2.0 schema."""
     async with engine.begin() as conn:
+        # Drop all old tables (v1.x → v2.0 migration)
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+    print("Database tables recreated (v2.0 schema).")
