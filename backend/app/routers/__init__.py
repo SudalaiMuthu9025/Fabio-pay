@@ -1,3 +1,1 @@
-"""
-Fabio Backend — Routers Package
-"""
+"""Fabio Backend — Router Package"""

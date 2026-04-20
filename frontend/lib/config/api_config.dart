@@ -1,45 +1,25 @@
 /// Fabio — API Configuration
 ///
-/// Base URLs for REST and WebSocket connections.
-/// Change `baseUrl` when deploying to production.
+/// Centralized endpoint definitions for the Fabio backend.
 
 class ApiConfig {
   ApiConfig._();
 
   /// REST API base URL
-  /// For physical device on same WiFi, use your machine's WiFi IP.
-  /// After deployment, use your Railway/production URL.
-  // static const String baseUrl = 'http://10.0.2.2:8000'; // Android emulator
-  // static const String baseUrl = 'http://192.168.1.100:8000'; // Physical device (change IP)
-  static const String baseUrl = 'https://fabio-production-5484.up.railway.app'; // Production
-
-  /// WebSocket URL for liveness verification
-  static String wsUrl(String token) => baseUrl.replaceFirst('http', 'ws') + '/ws/liveness?token=$token';
+  static const String baseUrl = 'https://fabio-production-5484.up.railway.app';
 
   /// API Endpoints
-  static const String login = '/api/auth/login';
-  static const String register = '/api/auth/register';
-  static const String registerFace = '/api/security/register-face';
-  static const String verifyFace = '/api/security/verify-face';
-  static const String faceStatus = '/api/security/face-status';
-  static const String logout = '/api/auth/logout';
-  static const String sessions = '/api/auth/sessions';
-  static const String googleAuth = '/api/auth/google';
-  static const String userMe = '/api/users/me';
-  static const String accounts = '/api/accounts/';
-  static const String security = '/api/security/';
-  static const String transfer = '/api/transactions/transfer';
-  static const String transactions = '/api/transactions/';
-  static const String health = '/api/health';
+  static const String register = '/auth/register';
+  static const String login = '/auth/login';
+  static const String me = '/auth/me';
+  static const String setPin = '/auth/set-pin';
 
-  // Admin API Endpoints
-  static const String adminDashboard = '/api/admin/dashboard';
-  static const String adminUsers = '/api/admin/users';
-  static const String adminSessions = '/api/admin/sessions';
-  static const String adminAuditLogs = '/api/admin/audit-logs';
-  static String adminChangeRole(String userId) => '/api/admin/users/$userId/role';
-  static String adminChangeStatus(String userId) => '/api/admin/users/$userId/status';
-  static String adminVerifyBank(String bankId) => '/api/admin/verify-bank/$bankId';
-  static String adminRevokeSessions(String userId) => '/api/admin/revoke-sessions/$userId';
-  static String adminResetFace(String userId) => '/api/admin/users/$userId/face-data';
+  static const String faceRegister = '/face/register';
+  static const String faceVerify = '/face/verify';
+
+  static const String bankRegister = '/bank/register';
+  static const String bankAccount = '/bank/account';
+
+  static const String transactionsSend = '/transactions/send';
+  static const String transactionsHistory = '/transactions/history';
 }

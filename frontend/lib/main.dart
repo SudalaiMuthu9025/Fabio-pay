@@ -1,25 +1,26 @@
 /// Fabio — Main Entry Point
 ///
-/// App initialization, theme, and route configuration.
+/// App initialization, Riverpod, theme, and route configuration.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'config/theme.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
+import 'screens/face_capture_screen.dart';
+import 'screens/bank_setup_screen.dart';
+import 'screens/set_pin_screen.dart';
 import 'screens/dashboard_screen.dart';
-import 'screens/transfer_screen.dart';
-import 'screens/liveness_screen.dart';
-import 'screens/settings_screen.dart';
-import 'screens/face_register_screen.dart';
-import 'screens/admin_dashboard_screen.dart';
+import 'screens/send_money_screen.dart';
+import 'screens/liveness_check_screen.dart';
+import 'screens/transaction_history_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Force dark status bar for premium look
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
@@ -27,13 +28,12 @@ void main() {
     systemNavigationBarIconBrightness: Brightness.light,
   ));
 
-  // Lock to portrait
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  runApp(const FabioApp());
+  runApp(const ProviderScope(child: FabioApp()));
 }
 
 class FabioApp extends StatelessWidget {
@@ -46,18 +46,17 @@ class FabioApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
 
-      // ── Routes ──────────────────────────────────────────────────
       initialRoute: '/',
       routes: {
         '/': (context) => const SplashScreen(),
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
+        '/face-capture': (context) => const FaceCaptureScreen(),
+        '/bank-setup': (context) => const BankSetupScreen(),
+        '/set-pin': (context) => const SetPinScreen(),
         '/dashboard': (context) => const DashboardScreen(),
-        '/transfer': (context) => const TransferScreen(),
-        '/liveness': (context) => const LivenessScreen(),
-        '/settings': (context) => const SettingsScreen(),
-        '/face-register': (context) => const FaceRegisterScreen(),
-        '/admin': (context) => const AdminDashboardScreen(),
+        '/send-money': (context) => const SendMoneyScreen(),
+        '/transaction-history': (context) => const TransactionHistoryScreen(),
       },
     );
   }

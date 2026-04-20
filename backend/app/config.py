@@ -2,7 +2,6 @@
 Fabio Backend — Application Configuration
 ==========================================
 Loads settings from environment variables (or .env file).
-All sensitive values default to development placeholders — override in production.
 """
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -22,19 +21,16 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://fabio:fabio@localhost:5432/fabio_db"
     )
 
-    # ── Session Auth ─────────────────────────────────────────────────────
+    # ── JWT Auth ─────────────────────────────────────────────────────────
     SECRET_KEY: str = "CHANGE-ME-in-production-use-openssl-rand-hex-32"
-    SESSION_EXPIRE_HOURS: int = 24
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_MINUTES: int = 1440  # 24 hours
 
-    # ── Google OAuth 2.0 ─────────────────────────────────────────────────
-    GOOGLE_CLIENT_ID: str = ""
-    GOOGLE_CLIENT_SECRET: str = ""
+    # ── Transaction ──────────────────────────────────────────────────────
+    TRANSACTION_THRESHOLD: float = 5000.00  # ₹5000 default
 
-    # ── Biometric Engine ──────────────────────────────────────────────────
-    EAR_THRESHOLD: float = 0.2        # Eye-Aspect-Ratio below this = blink
-    MAR_THRESHOLD: float = 0.5        # Mouth-Aspect-Ratio above this = smile
-    CHALLENGE_COUNT: int = 3          # Number of actions in a challenge sequence
-    PANIC_TIMER_SECONDS: int = 15     # Max seconds to complete all challenges
+    # ── Face Verification ────────────────────────────────────────────────
+    FACE_MATCH_THRESHOLD: float = 0.35  # cosine distance threshold
 
     # ── General ───────────────────────────────────────────────────────────
     APP_NAME: str = "Fabio"

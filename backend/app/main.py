@@ -1,83 +1,39 @@
 """
 Fabio Backend — FastAPI Application Entrypoint
 ================================================
-Wires up REST routers, WebSocket liveness endpoint, CORS, lifespan,
-health-check, and serves web portals as static files.
+REST API with JWT auth, face verification, bank accounts, and transactions.
 """
 
 from __future__ import annotations
 
-import base64
-import json
-import os
 from contextlib import asynccontextmanager
-from pathlib import Path
 
-import cv2
-import numpy as np
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
 
-from app.challenge import ChallengeEngine, ChallengeStatus
 from app.config import settings
-from app.database import init_db, get_db
-from sqlalchemy import select as sa_select
-from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import Depends, Query
-from datetime import datetime, timezone
-from app.auth import get_user_from_token
-from app.face_recognition import extract_face_embedding_from_b64, verify_face_match
-from app.liveness import (
-    LEFT_EYE_IDX,
-    MOUTH_IDX,
-    RIGHT_EYE_IDX,
-    detect_blink,
-    detect_smile,
-    detect_smirk,
-)
-from app.routers import accounts, auth, security, transactions, users
-from app.routers import admin as admin_router
-from app.routers import google_auth
-
-# Lazy-load MediaPipe (heavy import)
-_face_mesh = None
-
-
-def _get_face_mesh():
-    global _face_mesh
-    if _face_mesh is None:
-        import mediapipe as mp
-        _face_mesh = mp.solutions.face_mesh.FaceMesh(
-            static_image_mode=False,
-            max_num_faces=1,
-            refine_landmarks=True,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5,
-        )
-    return _face_mesh
+from app.database import init_db
+from app.routers import auth, bank, face, transactions
 
 
 # ── Lifespan ──────────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Run once on startup: create DB tables if they don't exist."""
-    import sys
-    import os
-    # Ensure root folder is in sys.path so seed_admin can be discovered safely
-    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    if root_dir not in sys.path:
-        sys.path.append(root_dir)
-
     await init_db()
-    
+
+    # Auto-seed admin user
     try:
+        import sys
+        import os
+        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if root_dir not in sys.path:
+            sys.path.append(root_dir)
         from seed_admin import seed_admin
         await seed_admin()
-        print("Production Admin Seeding Completed.")
+        print("Admin seeding completed.")
     except Exception as e:
-        print(f"Admin Seeding bypassed/failed: {e}")
+        print(f"Admin seeding skipped: {e}")
 
     yield
 
@@ -86,11 +42,10 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.APP_NAME,
     description=(
-        "FinTech API with Dynamic Anti-Spoofing Biometric System "
-        "using Randomized Challenge-Response Sequences. "
-        "Secured with HMAC-SHA256 session tokens and Google OAuth 2.0."
+        "FinTech API with Biometric Face Verification, "
+        "JWT Auth, and Simon Says Liveness Detection."
     ),
-    version="1.0.0",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -105,293 +60,12 @@ app.add_middleware(
 
 # ── REST Routers ──────────────────────────────────────────────────────────────
 app.include_router(auth.router)
-app.include_router(google_auth.router)
-app.include_router(users.router)
-app.include_router(accounts.router)
-app.include_router(security.router)
+app.include_router(face.router)
+app.include_router(bank.router)
 app.include_router(transactions.router)
-app.include_router(admin_router.router)
-
-# ── Web Portals (Static Files) ───────────────────────────────────────────────
-# Determine the web directory path
-BACKEND_DIR = Path(__file__).resolve().parent.parent
-WEB_DIR = BACKEND_DIR.parent / "web"
-
-
-def _mount_portal(path: str, folder: str):
-    """Mount a web portal's static files if the directory exists."""
-    portal_dir = WEB_DIR / folder
-    if portal_dir.exists():
-        app.mount(
-            f"/{path}/assets",
-            StaticFiles(directory=str(portal_dir / "assets")),
-            name=f"{folder}_assets",
-        )
-
-
-# Mount static asset directories if they exist
-for _path, _folder in [("admin", "admin"), ("vice", "vice"), ("portal", "user")]:
-    try:
-        _mount_portal(_path, _folder)
-    except Exception:
-        pass  # Static files not built yet
-
-
-# ── Web Portal HTML Entry Points ─────────────────────────────────────────────
-@app.get("/admin/{path:path}", include_in_schema=False)
-async def admin_portal(path: str = ""):
-    html_file = WEB_DIR / "admin" / "index.html"
-    if html_file.exists():
-        return FileResponse(str(html_file), media_type="text/html")
-    return HTMLResponse("<h1>Admin portal not built yet</h1>", status_code=404)
-
-
-@app.get("/vice/{path:path}", include_in_schema=False)
-async def vice_portal(path: str = ""):
-    html_file = WEB_DIR / "vice" / "index.html"
-    if html_file.exists():
-        return FileResponse(str(html_file), media_type="text/html")
-    return HTMLResponse("<h1>Vice Admin portal not built yet</h1>", status_code=404)
-
-
-@app.get("/portal/{path:path}", include_in_schema=False)
-async def user_portal(path: str = ""):
-    html_file = WEB_DIR / "user" / "index.html"
-    if html_file.exists():
-        return FileResponse(str(html_file), media_type="text/html")
-    return HTMLResponse("<h1>User portal not built yet</h1>", status_code=404)
 
 
 # ── Health Check ──────────────────────────────────────────────────────────────
-@app.get("/", tags=["System"])
-async def root():
-    return {
-        "status": "healthy",
-        "app": settings.APP_NAME,
-        "version": "1.0.0",
-        "portals": {
-            "admin": "/admin/",
-            "vice_admin": "/vice/",
-            "user": "/portal/",
-            "api_docs": "/docs",
-        },
-    }
-
-
-@app.get("/api/health", tags=["System"])
-async def health():
-    return {"status": "healthy", "app": settings.APP_NAME}
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  WebSocket — Active Liveness Verification
-# ═══════════════════════════════════════════════════════════════════════════════
-
-from app.models import BankAccount, TransactionLog, TransactionStatus
-
-@app.websocket("/ws/liveness")
-async def websocket_liveness(
-    ws: WebSocket,
-    token: str = Query(...),
-    transaction_id: str = Query(default=""),
-    db: AsyncSession = Depends(get_db),
-):
-    await ws.accept()
-
-    # 1. Authenticate via token
-    user = await get_user_from_token(token, db)
-    if not user:
-        await ws.send_json({"type": "error", "message": "Authentication failed"})
-        await ws.close()
-        return
-
-    # 2. Load the pending transaction (if transaction_id provided)
-    pending_txn: TransactionLog | None = None
-    if transaction_id:
-        txn_result = await db.execute(
-            sa_select(TransactionLog).where(
-                TransactionLog.id == transaction_id,
-                TransactionLog.user_id == user.id,
-                TransactionLog.status == TransactionStatus.PENDING,
-            )
-        )
-        pending_txn = txn_result.scalar_one_or_none()
-
-    # 3. Build challenge — use the transaction's stored sequence if available
-    if pending_txn and pending_txn.challenge_sequence:
-        stored_seq = pending_txn.challenge_sequence.get("sequence", [])
-        engine = ChallengeEngine(count=len(stored_seq))
-        engine.sequence = stored_seq  # Use exact same sequence
-    else:
-        engine = ChallengeEngine()
-
-    engine.start()
-
-    # 4. Identity verification flags
-    enrolled_embedding = user.face_encoding
-    is_identity_verified = not bool(enrolled_embedding)  # skip if no face enrolled
-
-    await ws.send_json({
-        "type": "challenge",
-        "sequence": engine.sequence,
-        "timeout": engine.timeout,
-        "current_action": engine.current_action,
-        "identity_verified": is_identity_verified,
-        "has_transaction": pending_txn is not None,
-    })
-
-    face_mesh = _get_face_mesh()
-
-    try:
-        while engine.status == ChallengeStatus.IN_PROGRESS:
-            data = await ws.receive_text()
-            payload = json.loads(data)
-
-            frame_b64 = payload.get("frame", "")
-            frame_bytes = base64.b64decode(frame_b64)
-            np_arr = np.frombuffer(frame_bytes, dtype=np.uint8)
-            frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-
-            if frame is None:
-                await ws.send_json({"type": "error", "message": "Invalid frame"})
-                continue
-
-            h, w, _ = frame.shape
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-            results = face_mesh.process(rgb_frame)
-
-            if not results.multi_face_landmarks:
-                await ws.send_json({
-                    "type": "feedback",
-                    "detected": None,
-                    "message": "No face detected — move closer to camera",
-                    "progress": engine.progress,
-                })
-                continue
-
-            # ── Identity Verification (1:1 face match) ────────────────────
-            if enrolled_embedding and not is_identity_verified:
-                live_embedding = extract_face_embedding_from_b64(frame_b64)
-                if live_embedding is None:
-                    await ws.send_json({"type": "feedback", "message": "Analyzing face..."})
-                    continue
-
-                is_match = verify_face_match(live_embedding, enrolled_embedding)
-                if is_match:
-                    is_identity_verified = True
-                else:
-                    # Send as result/failed so frontend properly exits
-                    engine.status = ChallengeStatus.FAILED
-                    await ws.send_json({
-                        "type": "result",
-                        "status": "failed",
-                        "message": "Face does not match registered identity.",
-                        "sequence": engine.sequence,
-                        "results": engine.results,
-                    })
-                    break
-
-            # ── Liveness challenge detection ──────────────────────────────
-            landmarks = results.multi_face_landmarks[0]
-            lm = landmarks.landmark
-
-            right_eye = [(lm[i].x * w, lm[i].y * h) for i in RIGHT_EYE_IDX]
-            left_eye = [(lm[i].x * w, lm[i].y * h) for i in LEFT_EYE_IDX]
-            mouth = [(lm[i].x * w, lm[i].y * h) for i in MOUTH_IDX]
-
-            is_blinking, ear_val = detect_blink(left_eye, right_eye)
-            is_smiling, mar_val = detect_smile(mouth)
-            is_smirking, smirk_val = detect_smirk(lm, w, h)
-
-            detected_action = None
-            if is_blinking:
-                detected_action = "Blink"
-            elif is_smiling:
-                detected_action = "Smile"
-            elif is_smirking:
-                detected_action = "Smirk"
-
-            # Only advance if the detected action matches the expected one
-            if detected_action and detected_action == engine.current_action:
-                engine.submit_action(detected_action)
-
-            await ws.send_json({
-                "type": "feedback",
-                "detected": detected_action,
-                "ear": round(ear_val, 3),
-                "mar": round(mar_val, 3),
-                "smirk": round(smirk_val, 3),
-                "progress": engine.progress,
-                "identity_verified": is_identity_verified,
-            })
-
-            if engine.is_timed_out:
-                engine.status = ChallengeStatus.TIMED_OUT
-                break
-
-    except WebSocketDisconnect:
-        engine.status = ChallengeStatus.FAILED
-
-    # ═════════════════════════════════════════════════════════════════════
-    #  Post-verification: persist results & complete/fail the transaction
-    # ═════════════════════════════════════════════════════════════════════
-    transaction_completed = False
-
-    try:
-        if engine.status == ChallengeStatus.PASSED:
-            # Update user liveness stats
-            user.liveness_verified = True
-            user.last_liveness_at = datetime.now(timezone.utc)
-            user.liveness_count = (user.liveness_count or 0) + 1
-
-            # ── Complete the pending transaction ──────────────────────────
-            if pending_txn:
-                # Re-check balance (may have changed since initiation)
-                acct_result = await db.execute(
-                    sa_select(BankAccount).where(
-                        BankAccount.id == pending_txn.from_account_id
-                    )
-                )
-                account = acct_result.scalar_one_or_none()
-
-                if account and account.balance >= pending_txn.amount:
-                    account.balance -= pending_txn.amount
-                    pending_txn.status = TransactionStatus.SUCCESS
-                    transaction_completed = True
-                else:
-                    pending_txn.status = TransactionStatus.FAILED
-                    pending_txn.description = (pending_txn.description or "") + " [Insufficient balance at settlement]"
-
-            await db.flush()
-            await db.commit()
-
-        elif engine.status in (ChallengeStatus.FAILED, ChallengeStatus.TIMED_OUT):
-            # Mark the pending transaction as failed
-            if pending_txn:
-                pending_txn.status = TransactionStatus.FAILED
-                await db.flush()
-                await db.commit()
-
-    except Exception:
-        try:
-            await db.rollback()
-        except Exception:
-            pass
-
-    # ── Send final result to client ───────────────────────────────────────
-    try:
-        await ws.send_json({
-            "type": "result",
-            "status": engine.status.value,
-            "sequence": engine.sequence,
-            "results": engine.results,
-            "transaction_completed": transaction_completed,
-        })
-    except Exception:
-        pass
-
-    try:
-        await ws.close()
-    except Exception:
-        pass
+@app.get("/api/health", tags=["Health"])
+async def health_check():
+    return {"status": "ok", "app": settings.APP_NAME, "version": "2.0.0"}

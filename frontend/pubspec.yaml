@@ -1,7 +1,7 @@
 name: fabio
-description: "Fabio — FinTech Active Liveness Biometric App"
+description: "Fabio — FinTech Biometric Payment App"
 publish_to: 'none'
-version: 1.0.0+1
+version: 2.0.0+1
 
 environment:
   sdk: '>=3.2.0 <4.0.0'
@@ -14,21 +14,22 @@ dependencies:
   cupertino_icons: ^1.0.8
   google_fonts: ^6.2.1
 
-  # ── Camera & Media ─────────────────────────────────────────────────────
+  # ── Camera & Face Detection ────────────────────────────────────────────
   camera: ^0.11.0+2
   image: ^4.3.0
+  google_mlkit_face_detection: ^0.11.0
 
   # ── Networking ─────────────────────────────────────────────────────────
-  dio: ^5.7.0                      # REST API client
-  web_socket_channel: ^3.0.1       # WebSocket for real-time liveness frames
+  dio: ^5.7.0
+
+  # ── State Management ───────────────────────────────────────────────────
+  flutter_riverpod: ^2.6.1
 
   # ── Secure Storage & Auth ──────────────────────────────────────────────
-  flutter_secure_storage: ^9.2.3   # Session token persistence
+  flutter_secure_storage: ^9.2.3
 
   # ── Utilities ──────────────────────────────────────────────────────────
-  intl: ^0.19.0                    # Number / currency formatting
-  uuid: ^4.5.1
-  logger: ^2.5.0
+  intl: ^0.19.0
 
 dev_dependencies:
   flutter_test:

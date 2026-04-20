@@ -1,7 +1,6 @@
-/// Fabio — Register Screen
+/// Fabio — Bank Setup Screen
 ///
-/// Step 1: Name, email, phone, password.
-/// On success → auto-login and navigate to /face-capture.
+/// Step 3: Register bank account (account number, IFSC, holder name).
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,22 +9,20 @@ import '../services/api_service.dart';
 import '../widgets/fab_button.dart';
 import '../widgets/glass_card.dart';
 
-class RegisterScreen extends ConsumerStatefulWidget {
-  const RegisterScreen({super.key});
+class BankSetupScreen extends ConsumerStatefulWidget {
+  const BankSetupScreen({super.key});
 
   @override
-  ConsumerState<RegisterScreen> createState() => _RegisterScreenState();
+  ConsumerState<BankSetupScreen> createState() => _BankSetupScreenState();
 }
 
-class _RegisterScreenState extends ConsumerState<RegisterScreen>
+class _BankSetupScreenState extends ConsumerState<BankSetupScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _accountController = TextEditingController();
+  final _ifscController = TextEditingController();
+  final _holderController = TextEditingController();
   bool _isLoading = false;
-  bool _obscurePassword = true;
   String? _errorMessage;
 
   late AnimationController _slideController;
@@ -51,14 +48,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   @override
   void dispose() {
     _slideController.dispose();
-    _nameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _passwordController.dispose();
+    _accountController.dispose();
+    _ifscController.dispose();
+    _holderController.dispose();
     super.dispose();
   }
 
-  Future<void> _register() async {
+  Future<void> _registerBank() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -67,28 +63,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     });
 
     try {
-      // 1. Register
-      await ApiService.register(
-        email: _emailController.text.trim(),
-        fullName: _nameController.text.trim(),
-        phone: _phoneController.text.trim(),
-        password: _passwordController.text,
-      );
-
-      // 2. Auto-login to get JWT
-      await ApiService.login(
-        _emailController.text.trim(),
-        _passwordController.text,
+      await ApiService.registerBank(
+        accountNumber: _accountController.text.trim(),
+        ifscCode: _ifscController.text.trim().toUpperCase(),
+        accountHolderName: _holderController.text.trim(),
       );
 
       if (!mounted) return;
 
-      // 3. Navigate to face capture
-      Navigator.pushReplacementNamed(context, '/face-capture');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bank account registered!'),
+          backgroundColor: AppTheme.success,
+        ),
+      );
+      Navigator.pushReplacementNamed(context, '/set-pin');
     } catch (e) {
-      String msg = 'Registration failed. Please try again.';
+      String msg = 'Bank registration failed. Please try again.';
       if (e.toString().contains('409')) {
-        msg = 'Email already registered. Please login instead.';
+        msg = 'Account number already registered.';
       }
       setState(() => _errorMessage = msg);
     } finally {
@@ -124,14 +117,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                           ),
                         ],
                       ),
-                      child: const Icon(Icons.person_add_rounded,
+                      child: const Icon(Icons.account_balance_rounded,
                           size: 38, color: Colors.white),
                     ),
                     const SizedBox(height: 24),
-                    Text('Create Account',
+                    Text('Link Bank Account',
                         style: Theme.of(context).textTheme.headlineLarge),
                     const SizedBox(height: 8),
-                    Text('Step 1 of 4 — Your Details',
+                    Text('Step 3 of 4 — Bank Details',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: AppTheme.accent,
                             )),
@@ -143,64 +136,47 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                         child: Column(
                           children: [
                             TextFormField(
-                              controller: _nameController,
+                              controller: _accountController,
+                              keyboardType: TextInputType.number,
                               style: const TextStyle(color: Colors.white),
                               decoration: const InputDecoration(
-                                hintText: 'Full Name',
+                                hintText: 'Account Number',
+                                prefixIcon: Icon(Icons.numbers_rounded,
+                                    color: AppTheme.textSecondary),
+                              ),
+                              validator: (v) =>
+                                  (v == null || v.length < 8) ? 'Enter valid account number' : null,
+                            ),
+                            const SizedBox(height: 14),
+                            TextFormField(
+                              controller: _ifscController,
+                              textCapitalization: TextCapitalization.characters,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: const InputDecoration(
+                                hintText: 'IFSC Code (e.g. SBIN0001234)',
+                                prefixIcon: Icon(Icons.code_rounded,
+                                    color: AppTheme.textSecondary),
+                              ),
+                              validator: (v) {
+                                if (v == null || v.isEmpty) return 'Enter IFSC code';
+                                final regex = RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$');
+                                if (!regex.hasMatch(v.toUpperCase())) {
+                                  return 'Invalid IFSC format';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 14),
+                            TextFormField(
+                              controller: _holderController,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: const InputDecoration(
+                                hintText: 'Account Holder Name',
                                 prefixIcon: Icon(Icons.person_outline,
                                     color: AppTheme.textSecondary),
                               ),
                               validator: (v) =>
-                                  (v == null || v.length < 2) ? 'Enter your name' : null,
-                            ),
-                            const SizedBox(height: 14),
-                            TextFormField(
-                              controller: _emailController,
-                              keyboardType: TextInputType.emailAddress,
-                              style: const TextStyle(color: Colors.white),
-                              decoration: const InputDecoration(
-                                hintText: 'Email',
-                                prefixIcon: Icon(Icons.email_outlined,
-                                    color: AppTheme.textSecondary),
-                              ),
-                              validator: (v) =>
-                                  (v == null || !v.contains('@')) ? 'Enter valid email' : null,
-                            ),
-                            const SizedBox(height: 14),
-                            TextFormField(
-                              controller: _phoneController,
-                              keyboardType: TextInputType.phone,
-                              style: const TextStyle(color: Colors.white),
-                              decoration: const InputDecoration(
-                                hintText: 'Phone Number',
-                                prefixIcon: Icon(Icons.phone_outlined,
-                                    color: AppTheme.textSecondary),
-                              ),
-                              validator: (v) =>
-                                  (v == null || v.length < 10) ? 'Enter valid phone' : null,
-                            ),
-                            const SizedBox(height: 14),
-                            TextFormField(
-                              controller: _passwordController,
-                              obscureText: _obscurePassword,
-                              style: const TextStyle(color: Colors.white),
-                              decoration: InputDecoration(
-                                hintText: 'Password (8+ chars)',
-                                prefixIcon: const Icon(Icons.lock_outline,
-                                    color: AppTheme.textSecondary),
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _obscurePassword
-                                        ? Icons.visibility_off
-                                        : Icons.visibility,
-                                    color: AppTheme.textSecondary,
-                                  ),
-                                  onPressed: () => setState(
-                                      () => _obscurePassword = !_obscurePassword),
-                                ),
-                              ),
-                              validator: (v) =>
-                                  (v == null || v.length < 8) ? 'Min 8 characters' : null,
+                                  (v == null || v.length < 2) ? 'Enter account holder name' : null,
                             ),
                             if (_errorMessage != null) ...[
                               const SizedBox(height: 12),
@@ -210,30 +186,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                             ],
                             const SizedBox(height: 24),
                             FabButton(
-                              label: 'Next — Capture Face',
-                              onPressed: _register,
+                              label: 'Next — Set PIN',
+                              onPressed: _registerBank,
                               isLoading: _isLoading,
                               icon: Icons.arrow_forward_rounded,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    TextButton(
-                      onPressed: () =>
-                          Navigator.pushReplacementNamed(context, '/login'),
-                      child: RichText(
-                        text: TextSpan(
-                          text: 'Already have an account? ',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                          children: const [
-                            TextSpan(
-                              text: 'Sign In',
-                              style: TextStyle(
-                                color: AppTheme.accent,
-                                fontWeight: FontWeight.w600,
-                              ),
                             ),
                           ],
                         ),

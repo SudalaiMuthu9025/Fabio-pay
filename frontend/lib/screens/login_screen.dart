@@ -1,21 +1,22 @@
 /// Fabio — Login Screen
 ///
-/// Glassmorphism card with email/password fields, gradient button.
+/// Email + password login. Returns JWT token.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/theme.dart';
 import '../services/api_service.dart';
 import '../widgets/fab_button.dart';
 import '../widgets/glass_card.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
+class _LoginScreenState extends ConsumerState<LoginScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
@@ -66,20 +67,15 @@ class _LoginScreenState extends State<LoginScreen>
         _passwordController.text,
       );
       if (!mounted) return;
-
-      // Role-based routing
-      final user = await ApiService.getMe();
-      if (!mounted) return;
-
-      if (user.role == 'admin' || user.role == 'vice_admin') {
-        Navigator.pushReplacementNamed(context, '/admin');
-      } else {
-        Navigator.pushReplacementNamed(context, '/dashboard');
-      }
+      Navigator.pushNamedAndRemoveUntil(context, '/dashboard', (route) => false);
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Invalid email or password';
-      });
+      String msg = 'Login failed. Please check your credentials.';
+      if (e.toString().contains('401')) {
+        msg = 'Invalid email or password.';
+      } else if (e.toString().contains('403')) {
+        msg = 'Account is deactivated.';
+      }
+      setState(() => _errorMessage = msg);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -99,33 +95,31 @@ class _LoginScreenState extends State<LoginScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // ── Logo ──────────────────────────────────────
                     Container(
-                      width: 72,
-                      height: 72,
+                      width: 80,
+                      height: 80,
                       decoration: BoxDecoration(
                         gradient: AppTheme.primaryGradient,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: AppTheme.primary.withOpacity(0.35),
-                            blurRadius: 24,
-                            offset: const Offset(0, 8),
+                            color: AppTheme.primary.withOpacity(0.4),
+                            blurRadius: 28,
+                            offset: const Offset(0, 10),
                           ),
                         ],
                       ),
                       child: const Icon(Icons.fingerprint_rounded,
-                          size: 38, color: Colors.white),
+                          size: 44, color: Colors.white),
                     ),
                     const SizedBox(height: 24),
                     Text('Welcome Back',
                         style: Theme.of(context).textTheme.headlineLarge),
                     const SizedBox(height: 8),
-                    Text('Sign in to continue',
+                    Text('Sign in to your Fabio account',
                         style: Theme.of(context).textTheme.bodyMedium),
-                    const SizedBox(height: 36),
+                    const SizedBox(height: 32),
 
-                    // ── Form Card ─────────────────────────────────
                     GlassCard(
                       child: Form(
                         key: _formKey,
@@ -140,14 +134,12 @@ class _LoginScreenState extends State<LoginScreen>
                                 prefixIcon: Icon(Icons.email_outlined,
                                     color: AppTheme.textSecondary),
                               ),
-                              validator: (v) {
-                                if (v == null || !v.contains('@')) {
-                                  return 'Enter a valid email';
-                                }
-                                return null;
-                              },
+                              validator: (v) =>
+                                  (v == null || !v.contains('@'))
+                                      ? 'Enter valid email'
+                                      : null,
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 14),
                             TextFormField(
                               controller: _passwordController,
                               obscureText: _obscurePassword,
@@ -167,12 +159,10 @@ class _LoginScreenState extends State<LoginScreen>
                                       () => _obscurePassword = !_obscurePassword),
                                 ),
                               ),
-                              validator: (v) {
-                                if (v == null || v.length < 8) {
-                                  return 'Password must be 8+ characters';
-                                }
-                                return null;
-                              },
+                              validator: (v) =>
+                                  (v == null || v.isEmpty)
+                                      ? 'Enter password'
+                                      : null,
                             ),
                             if (_errorMessage != null) ...[
                               const SizedBox(height: 12),

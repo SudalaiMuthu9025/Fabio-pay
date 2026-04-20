@@ -4,15 +4,8 @@ Fabio Backend — Face Recognition Utilities (MediaPipe)
 Uses MediaPipe Face Mesh to extract normalized 3D facial landmarks
 as a face descriptor for 1:1 identity verification.
 
-Approach
---------
-1. MediaPipe Face Mesh extracts 468 3D landmarks from a face image.
-2. Landmarks are centred (nose-tip origin) and scaled to unit bounding-box.
-3. The normalised (x, y, z) triplets are flattened → 1404-D vector.
-4. Cosine similarity between two vectors decides match/no-match.
-
-This avoids heavy deep-learning libraries (DeepFace / TF-Keras / dlib)
-and reuses the same MediaPipe already loaded for liveness detection.
+The 468 3D landmarks are centred, scaled, and flattened into a 1404-D vector.
+Cosine similarity between two vectors decides match/no-match.
 """
 
 from __future__ import annotations
@@ -24,7 +17,7 @@ from typing import Optional
 import cv2
 import numpy as np
 
-logger = logging.getLogger("fabio.face_recognition")
+logger = logging.getLogger("fabio.face_utils")
 
 # Lazy-loaded singleton — heavy import
 _face_mesh = None
@@ -36,17 +29,13 @@ def _get_face_mesh():
     if _face_mesh is None:
         import mediapipe as mp
         _face_mesh = mp.solutions.face_mesh.FaceMesh(
-            static_image_mode=True,       # single image, not video stream
+            static_image_mode=True,
             max_num_faces=1,
-            refine_landmarks=True,         # 478 landmarks incl. iris
+            refine_landmarks=True,
             min_detection_confidence=0.5,
         )
     return _face_mesh
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  Landmark Normalisation → Face Descriptor
-# ═══════════════════════════════════════════════════════════════════════════════
 
 def _landmarks_to_descriptor(landmarks, img_w: int, img_h: int) -> list[float]:
     """
@@ -75,18 +64,11 @@ def _landmarks_to_descriptor(landmarks, img_w: int, img_h: int) -> list[float]:
     return pts.flatten().tolist()
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#  Public API
-# ═══════════════════════════════════════════════════════════════════════════════
-
-def extract_face_embedding_from_b64(base64_str: str) -> Optional[list[float]]:
+def extract_face_embedding(base64_str: str) -> Optional[list[float]]:
     """
-    Decode a base64-encoded image and return a MediaPipe face descriptor.
+    Decode a base64-encoded image and return a face descriptor.
 
-    Returns
-    -------
-    list[float] | None
-        1404-D normalised landmark vector, or None if no face detected.
+    Returns: 1404-D normalised landmark vector, or None if no face detected.
     """
     try:
         if "," in base64_str:
@@ -117,15 +99,6 @@ def extract_face_embedding_from_b64(base64_str: str) -> Optional[list[float]]:
         return None
 
 
-def extract_face_embedding_from_bytes(raw_bytes: bytes) -> Optional[list[float]]:
-    """
-    Extract face descriptor from raw image bytes (no base64).
-    Convenience wrapper for registration endpoint using UploadFile.
-    """
-    b64 = base64.b64encode(raw_bytes).decode("utf-8")
-    return extract_face_embedding_from_b64(b64)
-
-
 def verify_face_match(
     live_embedding: list[float],
     registered_embedding: list[float],
@@ -134,19 +107,7 @@ def verify_face_match(
     """
     Compare two face descriptors using Cosine Distance.
 
-    Parameters
-    ----------
-    live_embedding : list[float]
-        Descriptor from the live camera frame.
-    registered_embedding : list[float]
-        Descriptor stored in the database.
-    threshold : float
-        Maximum cosine distance for a match (lower = stricter).
-        Default 0.35 tuned for MediaPipe 468-landmark descriptors.
-
-    Returns
-    -------
-    bool — True if the faces match (distance < threshold).
+    Returns True if the faces match (distance < threshold).
     """
     if not live_embedding or not registered_embedding:
         return False
@@ -170,5 +131,5 @@ def verify_face_match(
     cosine_similarity = dot / (norm1 * norm2)
     cosine_distance = 1.0 - cosine_similarity
 
-    logger.debug(f"Face match cosine_distance={cosine_distance:.4f} threshold={threshold}")
+    logger.info(f"Face match cosine_distance={cosine_distance:.4f} threshold={threshold}")
     return cosine_distance < threshold
