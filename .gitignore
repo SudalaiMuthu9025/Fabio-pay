@@ -40,6 +40,10 @@ package-lock.json
 # ── Docker ────────────────────────────
 *.log
 
+# ── APK Builds ────────────────────────
+APK_Builds/
+*.apk
+
 # ── Temp / Scripts ────────────────────
 generate_doc.py
 build_output*.txt
