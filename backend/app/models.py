@@ -40,19 +40,19 @@ from app.database import Base
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class UserRole(str, enum.Enum):
-    USER = "user"
-    ADMIN = "admin"
+    USER = "USER"
+    ADMIN = "ADMIN"
 
 
 class AuthMethod(str, enum.Enum):
-    PIN = "pin"
-    BIOMETRIC = "biometric"
+    PIN = "PIN"
+    BIOMETRIC = "BIOMETRIC"
 
 
 class TransactionStatus(str, enum.Enum):
-    PENDING = "pending"
-    SUCCESS = "success"
-    FAILED = "failed"
+    PENDING = "PENDING"
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

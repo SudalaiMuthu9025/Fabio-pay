@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/theme.dart';
 import '../services/api_service.dart';
+import 'package:dio/dio.dart';
 import '../widgets/fab_button.dart';
 import '../widgets/glass_card.dart';
 
@@ -89,6 +90,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       String msg = 'Registration failed. Please try again.';
       if (e.toString().contains('409')) {
         msg = 'Email already registered. Please login instead.';
+      } else if (e is DioException) {
+        final data = e.response?.data;
+        if (data is Map && data.containsKey('detail')) {
+          msg = data['detail'].toString();
+        } else {
+          msg = 'Network error: ${e.message}';
+        }
+      } else {
+        msg = 'Error: $e';
       }
       setState(() => _errorMessage = msg);
     } finally {
