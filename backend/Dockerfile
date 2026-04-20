@@ -38,4 +38,4 @@ ENV PORT=8000
 EXPOSE $PORT
 
 # Run with Uvicorn — 0.0.0.0 for container networking, workers=1 for WebSocket
-CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]

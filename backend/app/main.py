@@ -20,7 +20,12 @@ from app.routers import auth, bank, face, transactions
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Run once on startup: create DB tables if they don't exist."""
-    await init_db()
+    try:
+        await init_db()
+        print("Database tables initialized.")
+    except Exception as e:
+        print(f"CRITICAL: Database initialization failed: {e}")
+        app.state.db_error = str(e)
 
     # Auto-seed admin user
     try:
@@ -68,4 +73,6 @@ app.include_router(transactions.router)
 # ── Health Check ──────────────────────────────────────────────────────────────
 @app.get("/api/health", tags=["Health"])
 async def health_check():
+    if hasattr(app.state, "db_error"):
+        return {"status": "error", "message": "Database Connection Failed", "error": app.state.db_error}
     return {"status": "ok", "app": settings.APP_NAME, "version": "2.0.0"}
