@@ -4,8 +4,8 @@ Fabio Backend — Application Configuration
 Loads settings from environment variables (or .env file).
 """
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
 
 class Settings(BaseSettings):
     """Central configuration loaded from environment / .env file."""
@@ -37,5 +37,12 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     ALLOWED_ORIGINS: str = "*"
 
+    @model_validator(mode="after")
+    def fix_db_url(self) -> 'Settings':
+        if self.DATABASE_URL and self.DATABASE_URL.startswith("postgresql://"):
+            self.DATABASE_URL = self.DATABASE_URL.replace(
+                "postgresql://", "postgresql+asyncpg://", 1
+            )
+        return self
 
 settings = Settings()
