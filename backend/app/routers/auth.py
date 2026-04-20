@@ -44,25 +44,34 @@ async def register(
     body: UserRegister,
     db: AsyncSession = Depends(get_db),
 ):
-    # Check duplicate email
-    exists = await db.execute(select(User).where(User.email == body.email))
-    if exists.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered",
+    try:
+        # Check duplicate email
+        exists = await db.execute(select(User).where(User.email == body.email))
+        if exists.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already registered",
+            )
+
+        # Create user
+        user = User(
+            email=body.email,
+            full_name=body.full_name,
+            phone=body.phone,
+            hashed_password=hash_password(body.password),
         )
+        db.add(user)
+        await db.flush()
+        await db.refresh(user)
 
-    # Create user
-    user = User(
-        email=body.email,
-        full_name=body.full_name,
-        phone=body.phone,
-        hashed_password=hash_password(body.password),
-    )
-    db.add(user)
-    await db.flush()
-
-    return _user_to_out(user)
+        return _user_to_out(user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Registration error: {type(e).__name__}: {str(e)}",
+        )
 
 
 # ── Login ─────────────────────────────────────────────────────────────────────
