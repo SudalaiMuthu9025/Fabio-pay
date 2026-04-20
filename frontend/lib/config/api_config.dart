@@ -6,7 +6,7 @@ class ApiConfig {
   ApiConfig._();
 
   /// REST API base URL
-  static const String baseUrl = 'https://fabio-production-5484.up.railway.app';
+  static const String baseUrl = 'https://fabio-pay-production.up.railway.app';
 
   /// API Endpoints
   static const String register = '/auth/register';
