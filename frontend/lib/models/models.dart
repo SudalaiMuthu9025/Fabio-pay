@@ -99,11 +99,14 @@ class BankAccount {
 class TransactionModel {
   final String id;
   final String userId;
+  final String? counterpartUserId;
+  final String transactionType; // DEBIT or CREDIT
   final String? fromAccountId;
   final String toAccountIdentifier;
   final double amount;
   final String currency;
   final String? description;
+  final String paymentMode;
   final String authMethod;
   final String status;
   final DateTime createdAt;
@@ -111,11 +114,14 @@ class TransactionModel {
   TransactionModel({
     required this.id,
     required this.userId,
+    this.counterpartUserId,
+    this.transactionType = 'DEBIT',
     this.fromAccountId,
     required this.toAccountIdentifier,
     required this.amount,
     required this.currency,
     this.description,
+    this.paymentMode = 'ACCOUNT',
     required this.authMethod,
     required this.status,
     required this.createdAt,
@@ -125,15 +131,31 @@ class TransactionModel {
       TransactionModel(
         id: json['id'],
         userId: json['user_id'],
+        counterpartUserId: json['counterpart_user_id'],
+        transactionType: json['transaction_type'] ?? 'DEBIT',
         fromAccountId: json['from_account_id'],
         toAccountIdentifier: json['to_account_identifier'],
         amount: double.tryParse(json['amount'].toString()) ?? 0.0,
         currency: json['currency'],
         description: json['description'],
+        paymentMode: json['payment_mode'] ?? 'ACCOUNT',
         authMethod: json['auth_method'],
         status: json['status'],
         createdAt: DateTime.parse(json['created_at']),
       );
+
+  bool get isCredit => transactionType == 'CREDIT';
+  bool get isDebit => transactionType == 'DEBIT';
+
+  String get modeIcon {
+    switch (paymentMode) {
+      case 'UPI': return '⚡';
+      case 'QR': return '📱';
+      default: return '🏦';
+    }
+  }
+
+  String get directionLabel => isCredit ? 'Received' : 'Sent';
 }
 
 class SendMoneyResult {
@@ -160,3 +182,63 @@ class SendMoneyResult {
         requiresLiveness: json['requires_liveness'] ?? false,
       );
 }
+
+class Beneficiary {
+  final String id;
+  final String userId;
+  final String name;
+  final String accountNumber;
+  final String? ifscCode;
+  final String? nickname;
+  final bool isFavorite;
+  final DateTime createdAt;
+
+  Beneficiary({
+    required this.id,
+    required this.userId,
+    required this.name,
+    required this.accountNumber,
+    this.ifscCode,
+    this.nickname,
+    required this.isFavorite,
+    required this.createdAt,
+  });
+
+  factory Beneficiary.fromJson(Map<String, dynamic> json) => Beneficiary(
+        id: json['id'],
+        userId: json['user_id'],
+        name: json['name'],
+        accountNumber: json['account_number'],
+        ifscCode: json['ifsc_code'],
+        nickname: json['nickname'],
+        isFavorite: json['is_favorite'] ?? false,
+        createdAt: DateTime.parse(json['created_at']),
+      );
+
+  String get displayName => nickname ?? name;
+}
+
+class LoginLog {
+  final String id;
+  final String? ipAddress;
+  final String? userAgent;
+  final bool success;
+  final DateTime createdAt;
+
+  LoginLog({
+    required this.id,
+    this.ipAddress,
+    this.userAgent,
+    required this.success,
+    required this.createdAt,
+  });
+
+  factory LoginLog.fromJson(Map<String, dynamic> json) => LoginLog(
+        id: json['id'],
+        ipAddress: json['ip_address'],
+        userAgent: json['user_agent'],
+        success: json['success'],
+        createdAt: DateTime.parse(json['created_at']),
+      );
+}
+

@@ -9,7 +9,7 @@ POST /auth/set-pin    — set 4-digit transaction PIN
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,13 +21,14 @@ from app.auth import (
     verify_password,
 )
 from app.database import get_db
-from app.models import User
+from app.models import LoginLog, User
 from app.schemas import (
     SetPinRequest,
     TokenResponse,
     UserLogin,
     UserOut,
     UserRegister,
+    VerifyPinRequest,
 )
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -82,12 +83,26 @@ async def register(
 )
 async def login(
     body: UserLogin,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
 
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+
     if user is None or not verify_password(body.password, user.hashed_password):
+        # Log failed attempt
+        if user:
+            log = LoginLog(
+                user_id=user.id,
+                ip_address=client_ip,
+                user_agent=user_agent,
+                success=False,
+            )
+            db.add(log)
+            await db.flush()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
@@ -98,6 +113,15 @@ async def login(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is deactivated",
         )
+
+    # Log successful login
+    log = LoginLog(
+        user_id=user.id,
+        ip_address=client_ip,
+        user_agent=user_agent,
+        success=True,
+    )
+    db.add(log)
 
     token = create_access_token(
         user_id=str(user.id),
@@ -133,6 +157,29 @@ async def set_pin(
     current_user.pin_hash = hash_pin(body.pin)
     await db.flush()
     return _user_to_out(current_user)
+
+
+# ── Verify PIN ────────────────────────────────────────────────────────────────
+@router.post(
+    "/verify-pin",
+    summary="Verify transaction PIN (for balance reveal, etc.)",
+)
+async def verify_pin_endpoint(
+    body: VerifyPinRequest,
+    current_user: User = Depends(get_current_user),
+):
+    from app.auth import verify_pin as _verify_pin
+    if current_user.pin_hash is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="PIN not set",
+        )
+    if not _verify_pin(body.pin, current_user.pin_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid PIN",
+        )
+    return {"valid": True, "message": "PIN verified successfully"}
 
 
 # ── Helper ────────────────────────────────────────────────────────────────────

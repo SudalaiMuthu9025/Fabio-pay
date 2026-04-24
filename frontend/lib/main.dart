@@ -17,6 +17,10 @@ import 'screens/dashboard_screen.dart';
 import 'screens/send_money_screen.dart';
 import 'screens/liveness_check_screen.dart';
 import 'screens/transaction_history_screen.dart';
+import 'screens/profile_screen.dart';
+import 'screens/beneficiary_screen.dart';
+import 'screens/admin_panel_screen.dart';
+import 'screens/settings_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,7 +60,12 @@ class FabioApp extends StatelessWidget {
         '/set-pin': (context) => const SetPinScreen(),
         '/dashboard': (context) => const DashboardScreen(),
         '/send-money': (context) => const SendMoneyScreen(),
+        '/liveness-check': (context) => const LivenessCheckScreen(),
         '/transaction-history': (context) => const TransactionHistoryScreen(),
+        '/profile': (context) => const ProfileScreen(),
+        '/beneficiaries': (context) => const BeneficiaryScreen(),
+        '/admin': (context) => const AdminPanelScreen(),
+        '/settings': (context) => const SettingsScreen(),
       },
     );
   }

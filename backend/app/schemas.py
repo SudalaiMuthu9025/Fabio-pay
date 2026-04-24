@@ -43,6 +43,17 @@ class SetPinRequest(BaseModel):
     pin: str = Field(..., min_length=4, max_length=4, pattern=r"^\d{4}$")
 
 
+class VerifyPinRequest(BaseModel):
+    """POST /auth/verify-pin"""
+    pin: str = Field(..., min_length=4, max_length=4, pattern=r"^\d{4}$")
+
+
+class ChangePinRequest(BaseModel):
+    """POST /profile/change-pin"""
+    current_pin: str = Field(..., min_length=4, max_length=4, pattern=r"^\d{4}$")
+    new_pin: str = Field(..., min_length=4, max_length=4, pattern=r"^\d{4}$")
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 #  USER
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -121,10 +132,16 @@ class BankAccountOut(BaseModel):
 
 class SendMoneyRequest(BaseModel):
     """POST /transactions/send"""
-    to_account_identifier: str = Field(..., min_length=8, max_length=34)
+    to_account_identifier: str = Field(..., min_length=3, max_length=255,
+        description="Bank account number or UPI ID (e.g. user@upi)")
     amount: Decimal = Field(..., gt=0)
     description: Optional[str] = None
     pin: str = Field(..., min_length=4, max_length=4, pattern=r"^\d{4}$")
+    payment_mode: str = Field(
+        default="ACCOUNT",
+        pattern=r"^(ACCOUNT|UPI|QR)$",
+        description="Payment mode: ACCOUNT, UPI, or QR"
+    )
     face_verified: bool = Field(
         default=False,
         description="Set to true after liveness + face verification passes"
@@ -137,11 +154,14 @@ class TransactionOut(BaseModel):
 
     id: uuid.UUID
     user_id: uuid.UUID
+    counterpart_user_id: Optional[uuid.UUID] = None
+    transaction_type: str = "DEBIT"
     from_account_id: Optional[uuid.UUID] = None
     to_account_identifier: str
     amount: Decimal
     currency: str
     description: Optional[str] = None
+    payment_mode: str = "ACCOUNT"
     auth_method: str
     status: str
     created_at: datetime
@@ -154,3 +174,100 @@ class SendMoneyResponse(BaseModel):
     auth_method: str
     message: str
     requires_liveness: bool = False
+
+
+class DepositRequest(BaseModel):
+    """POST /transactions/deposit"""
+    amount: Decimal = Field(..., gt=0, le=100000,
+        description="Amount to deposit (max ₹1,00,000)")
+    pin: str = Field(..., min_length=4, max_length=4, pattern=r"^\d{4}$")
+
+
+class DepositResponse(BaseModel):
+    """Deposit result."""
+    success: bool
+    new_balance: Decimal
+    message: str
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  BENEFICIARY
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class BeneficiaryCreate(BaseModel):
+    """POST /beneficiary/add"""
+    name: str = Field(..., min_length=2, max_length=255)
+    account_number: str = Field(..., min_length=8, max_length=34)
+    ifsc_code: Optional[str] = Field(None, max_length=11)
+    nickname: Optional[str] = Field(None, max_length=50)
+
+
+class BeneficiaryOut(BaseModel):
+    """Beneficiary response."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    user_id: uuid.UUID
+    name: str
+    account_number: str
+    ifsc_code: Optional[str] = None
+    nickname: Optional[str] = None
+    is_favorite: bool
+    created_at: datetime
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  PROFILE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class ProfileUpdate(BaseModel):
+    """PATCH /profile/update"""
+    full_name: Optional[str] = Field(None, min_length=2, max_length=255)
+    phone: Optional[str] = Field(None, max_length=20)
+
+
+class ChangePassword(BaseModel):
+    """POST /profile/change-password"""
+    current_password: str = Field(..., min_length=8)
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+
+class LoginLogOut(BaseModel):
+    """Login log entry."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    ip_address: Optional[str] = None
+    user_agent: Optional[str] = None
+    success: bool
+    created_at: datetime
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  ADMIN
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class AdminUserOut(BaseModel):
+    """Admin view of a user."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    email: str
+    full_name: str
+    phone: Optional[str] = None
+    role: str
+    is_active: bool
+    is_face_registered: bool = False
+    has_pin: bool = False
+    has_bank_account: bool = False
+    created_at: datetime
+
+
+class RoleUpdate(BaseModel):
+    """PATCH /admin/users/{id}/role"""
+    role: str = Field(..., pattern=r"^(USER|ADMIN)$")
+
+
+class StatusUpdate(BaseModel):
+    """PATCH /admin/users/{id}/status"""
+    is_active: bool
+

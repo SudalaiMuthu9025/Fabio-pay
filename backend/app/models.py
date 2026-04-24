@@ -55,6 +55,17 @@ class TransactionStatus(str, enum.Enum):
     FAILED = "FAILED"
 
 
+class TransactionType(str, enum.Enum):
+    DEBIT = "DEBIT"     # Money sent (outgoing)
+    CREDIT = "CREDIT"   # Money received (incoming)
+
+
+class PaymentMode(str, enum.Enum):
+    ACCOUNT = "ACCOUNT"   # Bank account number
+    UPI = "UPI"           # UPI ID (like GPay, PhonePe)
+    QR = "QR"             # QR code scan
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 #  USERS
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -121,6 +132,16 @@ class User(Base):
         lazy="selectin",
     )
     transactions: Mapped[list["Transaction"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="noload",
+    )
+    beneficiaries: Mapped[list["Beneficiary"]] = relationship(
+        back_populates="owner",
+        cascade="all, delete-orphan",
+        lazy="noload",
+    )
+    login_logs: Mapped[list["LoginLog"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="noload",
@@ -248,19 +269,36 @@ class Transaction(Base):
         nullable=False,
         index=True,
     )
+    # For reflective transactions: links to the counterpart record
+    counterpart_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True,
+        doc="The other party in this transaction (receiver for DEBIT, sender for CREDIT)"
+    )
+    transaction_type: Mapped[TransactionType] = mapped_column(
+        Enum(TransactionType, name="transaction_type", create_constraint=True),
+        default=TransactionType.DEBIT,
+        nullable=False,
+        doc="DEBIT = money sent, CREDIT = money received"
+    )
     from_account_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("bank_accounts.id", ondelete="SET NULL"),
         nullable=True,
     )
     to_account_identifier: Mapped[str] = mapped_column(
-        String(34), nullable=False
+        String(255), nullable=False,
+        doc="Bank account number or UPI ID"
     )
     amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
     currency: Mapped[str] = mapped_column(
         String(3), default="INR", nullable=False
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    payment_mode: Mapped[PaymentMode] = mapped_column(
+        Enum(PaymentMode, name="payment_mode", create_constraint=True),
+        default=PaymentMode.ACCOUNT,
+        nullable=False,
+    )
     auth_method: Mapped[AuthMethod] = mapped_column(
         Enum(AuthMethod, name="auth_method", create_constraint=True),
         nullable=False,
@@ -283,3 +321,67 @@ class Transaction(Base):
             f"<Transaction {self.id!r} amount={self.amount} "
             f"status={self.status.value}>"
         )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  BENEFICIARIES (saved recipients for quick transfers)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class Beneficiary(Base):
+    """Saved recipient for quick money transfers."""
+
+    __tablename__ = "beneficiaries"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    account_number: Mapped[str] = mapped_column(String(34), nullable=False)
+    ifsc_code: Mapped[str | None] = mapped_column(String(11), nullable=True)
+    nickname: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    is_favorite: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    owner: Mapped["User"] = relationship(back_populates="beneficiaries")
+
+    def __repr__(self) -> str:
+        return f"<Beneficiary {self.name!r} acc={self.account_number!r}>"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  LOGIN LOGS (track login history)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class LoginLog(Base):
+    """Immutable record of every login attempt."""
+
+    __tablename__ = "login_logs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    success: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user: Mapped["User"] = relationship(back_populates="login_logs")
+
+    def __repr__(self) -> str:
+        return f"<LoginLog user={self.user_id!r} success={self.success}>"

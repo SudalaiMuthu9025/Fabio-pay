@@ -1,6 +1,6 @@
 /// Fabio — Transaction History Screen
 ///
-/// Displays all past transactions with status, amount, and date.
+/// Displays all past transactions with status, amount, direction, and date.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,6 +23,7 @@ class _TransactionHistoryScreenState
   List<TransactionModel> _transactions = [];
   bool _isLoading = true;
   String? _error;
+  String _filter = 'ALL'; // ALL, DEBIT, CREDIT
 
   final _currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
 
@@ -54,6 +55,11 @@ class _TransactionHistoryScreenState
     }
   }
 
+  List<TransactionModel> get _filteredTransactions {
+    if (_filter == 'ALL') return _transactions;
+    return _transactions.where((t) => t.transactionType == _filter).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -66,63 +72,143 @@ class _TransactionHistoryScreenState
       body: Container(
         decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
         child: SafeArea(
-          child: _isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(color: AppTheme.accent))
-              : _error != null
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.error_outline,
-                              color: AppTheme.error, size: 48),
-                          const SizedBox(height: 12),
-                          Text(_error!,
-                              style: const TextStyle(color: AppTheme.error)),
-                          const SizedBox(height: 16),
-                          TextButton(
-                            onPressed: _loadHistory,
-                            child: const Text('Retry',
-                                style: TextStyle(color: AppTheme.accent)),
-                          ),
-                        ],
-                      ),
-                    )
-                  : _transactions.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.receipt_long_rounded,
-                                  color:
-                                      AppTheme.textSecondary.withOpacity(0.4),
-                                  size: 64),
-                              const SizedBox(height: 16),
-                              Text('No transactions yet',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(
-                                        color: AppTheme.textSecondary,
-                                      )),
-                            ],
-                          ),
-                        )
-                      : RefreshIndicator(
-                          onRefresh: _loadHistory,
-                          color: AppTheme.accent,
-                          child: ListView.builder(
-                            padding: const EdgeInsets.all(20),
-                            itemCount: _transactions.length,
-                            itemBuilder: (context, index) {
-                              final txn = _transactions[index];
-                              return _TransactionCard(
-                                transaction: txn,
-                                currencyFormat: _currencyFormat,
-                              );
-                            },
-                          ),
-                        ),
+          child: Column(
+            children: [
+              // Filter chips
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Row(
+                  children: [
+                    _FilterChip(
+                      label: 'All',
+                      selected: _filter == 'ALL',
+                      onTap: () => setState(() => _filter = 'ALL'),
+                    ),
+                    const SizedBox(width: 8),
+                    _FilterChip(
+                      label: 'Sent',
+                      selected: _filter == 'DEBIT',
+                      onTap: () => setState(() => _filter = 'DEBIT'),
+                      color: AppTheme.error,
+                    ),
+                    const SizedBox(width: 8),
+                    _FilterChip(
+                      label: 'Received',
+                      selected: _filter == 'CREDIT',
+                      onTap: () => setState(() => _filter = 'CREDIT'),
+                      color: AppTheme.success,
+                    ),
+                  ],
+                ),
+              ),
+
+              // Content
+              Expanded(
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(color: AppTheme.accent))
+                    : _error != null
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.error_outline,
+                                    color: AppTheme.error, size: 48),
+                                const SizedBox(height: 12),
+                                Text(_error!,
+                                    style: const TextStyle(color: AppTheme.error)),
+                                const SizedBox(height: 16),
+                                TextButton(
+                                  onPressed: _loadHistory,
+                                  child: const Text('Retry',
+                                      style: TextStyle(color: AppTheme.accent)),
+                                ),
+                              ],
+                            ),
+                          )
+                        : _filteredTransactions.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.receipt_long_rounded,
+                                        color:
+                                            AppTheme.textSecondary.withOpacity(0.4),
+                                        size: 64),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                        _filter == 'ALL'
+                                            ? 'No transactions yet'
+                                            : 'No ${_filter == 'DEBIT' ? 'sent' : 'received'} transactions',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                              color: AppTheme.textSecondary,
+                                            )),
+                                  ],
+                                ),
+                              )
+                            : RefreshIndicator(
+                                onRefresh: _loadHistory,
+                                color: AppTheme.accent,
+                                child: ListView.builder(
+                                  padding: const EdgeInsets.all(20),
+                                  itemCount: _filteredTransactions.length,
+                                  itemBuilder: (context, index) {
+                                    final txn = _filteredTransactions[index];
+                                    return _TransactionCard(
+                                      transaction: txn,
+                                      currencyFormat: _currencyFormat,
+                                    );
+                                  },
+                                ),
+                              ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final Color? color;
+
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final chipColor = color ?? AppTheme.accent;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? chipColor.withOpacity(0.2) : Colors.white.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? chipColor : Colors.transparent,
+            width: 1.5,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? chipColor : AppTheme.textSecondary,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+            fontSize: 13,
+          ),
         ),
       ),
     );
@@ -140,27 +226,28 @@ class _TransactionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isSuccess = transaction.status == 'success';
+    final isSuccess = transaction.status == 'SUCCESS';
+    final isCredit = transaction.isCredit;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: GlassCard(
         child: Row(
           children: [
-            // Status icon
+            // Direction icon
             Container(
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: (isSuccess ? AppTheme.success : AppTheme.error)
+                color: (isCredit ? AppTheme.success : AppTheme.error)
                     .withOpacity(0.15),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(
-                isSuccess
-                    ? Icons.arrow_upward_rounded
-                    : Icons.close_rounded,
-                color: isSuccess ? AppTheme.success : AppTheme.error,
+                isCredit
+                    ? Icons.arrow_downward_rounded
+                    : Icons.arrow_upward_rounded,
+                color: isCredit ? AppTheme.success : AppTheme.error,
                 size: 22,
               ),
             ),
@@ -172,7 +259,9 @@ class _TransactionCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'To: ${transaction.toAccountIdentifier}',
+                    isCredit
+                        ? 'From: ${transaction.toAccountIdentifier}'
+                        : 'To: ${transaction.toAccountIdentifier}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14,
@@ -183,35 +272,52 @@ class _TransactionCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      // Auth method badge
+                      // Direction badge
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: transaction.authMethod == 'biometric'
-                              ? AppTheme.accent.withOpacity(0.2)
-                              : AppTheme.textSecondary.withOpacity(0.15),
+                          color: (isCredit ? AppTheme.success : AppTheme.accent)
+                              .withOpacity(0.2),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          transaction.authMethod == 'biometric'
-                              ? '🔒 Biometric'
-                              : '🔑 PIN',
+                          transaction.directionLabel,
                           style: TextStyle(
-                            color: transaction.authMethod == 'biometric'
-                                ? AppTheme.accent
-                                : AppTheme.textSecondary,
+                            color:
+                                isCredit ? AppTheme.success : AppTheme.accent,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      // Payment mode badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.textSecondary.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          transaction.paymentMode,
+                          style: const TextStyle(
+                            color: AppTheme.textSecondary,
                             fontSize: 10,
                           ),
                         ),
                       ),
                       const SizedBox(width: 6),
-                      Text(
-                        DateFormat('dd MMM yyyy, hh:mm a')
-                            .format(transaction.createdAt.toLocal()),
-                        style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 11,
+                      Expanded(
+                        child: Text(
+                          DateFormat('dd MMM, hh:mm a')
+                              .format(transaction.createdAt.toLocal()),
+                          style: const TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 11,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -239,9 +345,9 @@ class _TransactionCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '- ${currencyFormat.format(transaction.amount)}',
+                  '${isCredit ? '+' : '-'} ${currencyFormat.format(transaction.amount)}',
                   style: TextStyle(
-                    color: isSuccess ? AppTheme.success : AppTheme.error,
+                    color: isCredit ? AppTheme.success : AppTheme.error,
                     fontWeight: FontWeight.w600,
                     fontSize: 15,
                   ),

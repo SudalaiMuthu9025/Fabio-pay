@@ -93,6 +93,13 @@ class ApiService {
     return response.data;
   }
 
+  static Future<Map<String, dynamic>> reRegisterFace(String base64Image) async {
+    final response = await _dio.post(ApiConfig.reRegisterFace, data: {
+      'image': base64Image,
+    });
+    return response.data;
+  }
+
   // ── Bank ──────────────────────────────────────────────────────────────
 
   static Future<BankAccount> registerBank({
@@ -122,6 +129,7 @@ class ApiService {
     required double amount,
     required String pin,
     String? description,
+    String paymentMode = 'ACCOUNT',
     bool faceVerified = false,
   }) async {
     final response = await _dio.post(ApiConfig.transactionsSend, data: {
@@ -129,6 +137,7 @@ class ApiService {
       'amount': amount,
       'pin': pin,
       'description': description,
+      'payment_mode': paymentMode,
       'face_verified': faceVerified,
     });
     return SendMoneyResult.fromJson(response.data);
@@ -139,5 +148,124 @@ class ApiService {
     return (response.data as List)
         .map((j) => TransactionModel.fromJson(j))
         .toList();
+  }
+
+  static Future<Map<String, dynamic>> deposit({
+    required double amount,
+    required String pin,
+  }) async {
+    final response = await _dio.post(ApiConfig.transactionsDeposit, data: {
+      'amount': amount,
+      'pin': pin,
+    });
+    return response.data;
+  }
+
+  // ── Beneficiaries ─────────────────────────────────────────────────────
+
+  static Future<Beneficiary> addBeneficiary({
+    required String name,
+    required String accountNumber,
+    String? ifscCode,
+    String? nickname,
+  }) async {
+    final response = await _dio.post(ApiConfig.beneficiaryAdd, data: {
+      'name': name,
+      'account_number': accountNumber,
+      if (ifscCode != null) 'ifsc_code': ifscCode,
+      if (nickname != null) 'nickname': nickname,
+    });
+    return Beneficiary.fromJson(response.data);
+  }
+
+  static Future<List<Beneficiary>> getBeneficiaries() async {
+    final response = await _dio.get(ApiConfig.beneficiaryList);
+    return (response.data as List)
+        .map((j) => Beneficiary.fromJson(j))
+        .toList();
+  }
+
+  static Future<void> deleteBeneficiary(String id) async {
+    await _dio.delete(ApiConfig.beneficiaryDelete(id));
+  }
+
+  static Future<Beneficiary> toggleFavorite(String id) async {
+    final response = await _dio.patch(ApiConfig.beneficiaryFavorite(id));
+    return Beneficiary.fromJson(response.data);
+  }
+
+  // ── Profile ───────────────────────────────────────────────────────────
+
+  static Future<User> updateProfile({String? fullName, String? phone}) async {
+    final data = <String, dynamic>{};
+    if (fullName != null) data['full_name'] = fullName;
+    if (phone != null) data['phone'] = phone;
+    final response = await _dio.patch(ApiConfig.profileUpdate, data: data);
+    return User.fromJson(response.data);
+  }
+
+  static Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final response = await _dio.post(ApiConfig.changePassword, data: {
+      'current_password': currentPassword,
+      'new_password': newPassword,
+    });
+    return response.data;
+  }
+
+  static Future<bool> verifyPin(String pin) async {
+    try {
+      final response = await _dio.post(ApiConfig.verifyPin, data: {
+        'pin': pin,
+      });
+      return response.data['valid'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<Map<String, dynamic>> changePin({
+    required String currentPin,
+    required String newPin,
+  }) async {
+    final response = await _dio.post(ApiConfig.changePin, data: {
+      'current_pin': currentPin,
+      'new_pin': newPin,
+    });
+    return response.data;
+  }
+
+  static Future<List<LoginLog>> getLoginHistory() async {
+    final response = await _dio.get(ApiConfig.loginHistory);
+    return (response.data as List)
+        .map((j) => LoginLog.fromJson(j))
+        .toList();
+  }
+
+  // ── Admin ─────────────────────────────────────────────────────────────
+
+  static Future<List<User>> getAdminUsers() async {
+    final response = await _dio.get(ApiConfig.adminUsers);
+    return (response.data as List)
+        .map((j) => User.fromJson(j))
+        .toList();
+  }
+
+  static Future<User> changeUserRole(String userId, String role) async {
+    final response = await _dio.patch(
+      ApiConfig.adminUserRole(userId),
+      data: {'role': role},
+    );
+    return User.fromJson(response.data);
+  }
+
+  static Future<User> toggleUserStatus(String userId, bool isActive) async {
+    final response = await _dio.patch(
+      ApiConfig.adminUserStatus(userId),
+      data: {'is_active': isActive},
+    );
+    return User.fromJson(response.data);
   }
 }

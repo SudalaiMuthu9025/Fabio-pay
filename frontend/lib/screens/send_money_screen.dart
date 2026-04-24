@@ -1,5 +1,6 @@
-/// Fabio — Send Money Screen
+/// Fabio — Send Money Screen (GPay/PhonePe Style)
 ///
+/// Three payment tabs: UPI ID, Account Number, QR Code.
 /// Enter recipient, amount, PIN. If amount >= ₹5000 threshold,
 /// navigates to LivenessCheckScreen before completing.
 
@@ -20,7 +21,7 @@ class SendMoneyScreen extends ConsumerStatefulWidget {
 }
 
 class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _recipientController = TextEditingController();
   final _amountController = TextEditingController();
@@ -30,14 +31,31 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
   String? _errorMessage;
   String? _successMessage;
 
+  // Payment mode
+  int _selectedTab = 0; // 0 = UPI, 1 = Account, 2 = QR
+  static const _modes = ['UPI', 'ACCOUNT', 'QR'];
+
+  late TabController _tabController;
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
+  late AnimationController _successController;
+  late Animation<double> _successScale;
 
   final _currencyFormat = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
+
+  // Quick amount buttons
+  static const _quickAmounts = [500, 1000, 2000, 5000];
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      setState(() => _selectedTab = _tabController.index);
+      _recipientController.clear();
+      _errorMessage = null;
+    });
+
     _slideController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -49,18 +67,31 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
       parent: _slideController,
       curve: Curves.easeOutCubic,
     ));
+
+    _successController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _successScale = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _successController, curve: Curves.elasticOut),
+    );
+
     _slideController.forward();
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _slideController.dispose();
+    _successController.dispose();
     _recipientController.dispose();
     _amountController.dispose();
     _pinController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
+
+  String get _currentPaymentMode => _modes[_selectedTab];
 
   Future<void> _sendMoney({bool faceVerified = false}) async {
     if (!_formKey.currentState!.validate()) return;
@@ -81,11 +112,11 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
         description: _descriptionController.text.trim().isNotEmpty
             ? _descriptionController.text.trim()
             : null,
+        paymentMode: _currentPaymentMode,
         faceVerified: faceVerified,
       );
 
       if (result.requiresLiveness) {
-        // Navigate to liveness check
         setState(() => _isLoading = false);
         if (!mounted) return;
 
@@ -97,7 +128,6 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
         );
 
         if (livenessResult == true) {
-          // Liveness passed — retry with faceVerified = true
           await _sendMoney(faceVerified: true);
         } else {
           setState(() {
@@ -107,14 +137,16 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
         return;
       }
 
-      if (result.status == 'success') {
+      if (result.status == 'SUCCESS') {
+        _successController.forward();
         setState(() {
-          _successMessage = 'Transfer of ${_currencyFormat.format(amount)} completed!';
+          _successMessage =
+              'Transfer of ${_currencyFormat.format(amount)} completed!';
         });
 
         await Future.delayed(const Duration(seconds: 2));
         if (!mounted) return;
-        Navigator.pop(context);
+        Navigator.pop(context, true); // Return true to refresh dashboard
       } else {
         setState(() => _errorMessage = result.message);
       }
@@ -123,12 +155,35 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
       if (e.toString().contains('401')) {
         msg = 'Invalid PIN.';
       } else if (e.toString().contains('400')) {
-        msg = 'Insufficient balance or missing requirements.';
+        final errStr = e.toString().toLowerCase();
+        if (errStr.contains('upi')) {
+          msg = 'Invalid UPI ID format.';
+        } else if (errStr.contains('balance')) {
+          msg = 'Insufficient balance.';
+        } else {
+          msg = 'Missing requirements. Check your details.';
+        }
       }
       setState(() => _errorMessage = msg);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  String? _validateRecipient(String? v) {
+    if (v == null || v.isEmpty) return 'Required';
+    switch (_selectedTab) {
+      case 0: // UPI
+        if (!v.contains('@')) return 'Enter valid UPI ID (e.g. name@bank)';
+        break;
+      case 1: // Account
+        if (v.length < 8) return 'Enter valid account number';
+        break;
+      case 2: // QR
+        if (v.length < 3) return 'Enter scanned identifier';
+        break;
+    }
+    return null;
   }
 
   @override
@@ -144,55 +199,178 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
         decoration: const BoxDecoration(gradient: AppTheme.backgroundGradient),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(20),
             child: SlideTransition(
               position: _slideAnimation,
               child: Column(
                 children: [
-                  const SizedBox(height: 20),
-
-                  // Success message
+                  // ── Success State ──
                   if (_successMessage != null) ...[
-                    GlassCard(
-                      child: Column(
-                        children: [
-                          const Icon(Icons.check_circle_rounded,
-                              color: AppTheme.success, size: 64),
-                          const SizedBox(height: 16),
-                          Text(_successMessage!,
-                              style: const TextStyle(
-                                color: AppTheme.success,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
+                    const SizedBox(height: 40),
+                    ScaleTransition(
+                      scale: _successScale,
+                      child: GlassCard(
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    AppTheme.success,
+                                    AppTheme.success.withOpacity(0.7),
+                                  ],
+                                ),
+                                shape: BoxShape.circle,
                               ),
-                              textAlign: TextAlign.center),
-                        ],
+                              child: const Icon(Icons.check_rounded,
+                                  color: Colors.white, size: 48),
+                            ),
+                            const SizedBox(height: 20),
+                            Text(_successMessage!,
+                                style: const TextStyle(
+                                  color: AppTheme.success,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                textAlign: TextAlign.center),
+                            const SizedBox(height: 8),
+                            Text(
+                              _currentPaymentMode == 'UPI'
+                                  ? 'Sent via UPI ⚡'
+                                  : _currentPaymentMode == 'QR'
+                                      ? 'Sent via QR 📱'
+                                      : 'Bank Transfer 🏦',
+                              style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ] else ...[
+                    // ── Payment Mode Tabs ──
+                    GlassCard(
+                      padding: const EdgeInsets.all(6),
+                      child: TabBar(
+                        controller: _tabController,
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        indicator: BoxDecoration(
+                          gradient: AppTheme.primaryGradient,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        dividerColor: Colors.transparent,
+                        labelColor: Colors.white,
+                        unselectedLabelColor: AppTheme.textSecondary,
+                        labelStyle: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                        tabs: const [
+                          Tab(
+                            icon: Icon(Icons.flash_on_rounded, size: 20),
+                            text: 'UPI ID',
+                          ),
+                          Tab(
+                            icon: Icon(Icons.account_balance_rounded, size: 20),
+                            text: 'Account',
+                          ),
+                          Tab(
+                            icon: Icon(Icons.qr_code_scanner_rounded, size: 20),
+                            text: 'QR Code',
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // ── Form ──
                     GlassCard(
                       child: Form(
                         key: _formKey,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Transfer Details',
-                                style: Theme.of(context).textTheme.titleMedium),
+                            Row(
+                              children: [
+                                Icon(
+                                  _selectedTab == 0
+                                      ? Icons.flash_on_rounded
+                                      : _selectedTab == 1
+                                          ? Icons.account_balance_rounded
+                                          : Icons.qr_code_scanner_rounded,
+                                  color: AppTheme.accent,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _selectedTab == 0
+                                      ? 'Pay via UPI'
+                                      : _selectedTab == 1
+                                          ? 'Bank Transfer'
+                                          : 'QR Payment',
+                                  style: Theme.of(context).textTheme.titleMedium,
+                                ),
+                              ],
+                            ),
                             const SizedBox(height: 16),
+
+                            // Recipient
                             TextFormField(
                               controller: _recipientController,
-                              keyboardType: TextInputType.number,
+                              keyboardType: _selectedTab == 0
+                                  ? TextInputType.emailAddress
+                                  : TextInputType.number,
                               style: const TextStyle(color: Colors.white),
-                              decoration: const InputDecoration(
-                                hintText: 'Recipient Account Number',
-                                prefixIcon: Icon(Icons.person_outline,
-                                    color: AppTheme.textSecondary),
+                              decoration: InputDecoration(
+                                hintText: _selectedTab == 0
+                                    ? 'Enter UPI ID (e.g. name@oksbi)'
+                                    : _selectedTab == 1
+                                        ? 'Account Number'
+                                        : 'QR Scanned ID',
+                                prefixIcon: Icon(
+                                  _selectedTab == 0
+                                      ? Icons.alternate_email_rounded
+                                      : _selectedTab == 1
+                                          ? Icons.person_outline
+                                          : Icons.qr_code_2_rounded,
+                                  color: AppTheme.textSecondary,
+                                ),
+                                // Show popular UPI app hints
+                                suffixIcon: _selectedTab == 0
+                                    ? PopupMenuButton<String>(
+                                        icon: const Icon(Icons.expand_more,
+                                            color: AppTheme.textSecondary),
+                                        color: AppTheme.surfaceCard,
+                                        onSelected: (suffix) {
+                                          final current =
+                                              _recipientController.text
+                                                  .split('@')
+                                                  .first;
+                                          _recipientController.text =
+                                              '$current@$suffix';
+                                        },
+                                        itemBuilder: (_) => [
+                                          _upiMenuItem('oksbi', 'SBI'),
+                                          _upiMenuItem('okhdfcbank', 'HDFC'),
+                                          _upiMenuItem('okicici', 'ICICI'),
+                                          _upiMenuItem('okaxis', 'Axis'),
+                                          _upiMenuItem('ybl', 'PhonePe'),
+                                          _upiMenuItem('paytm', 'Paytm'),
+                                          _upiMenuItem('gpay', 'GPay'),
+                                          _upiMenuItem('ibl', 'IDBI'),
+                                        ],
+                                      )
+                                    : null,
                               ),
-                              validator: (v) => (v == null || v.length < 8)
-                                  ? 'Enter valid account number'
-                                  : null,
+                              validator: _validateRecipient,
                             ),
                             const SizedBox(height: 14),
+
+                            // Amount
                             TextFormField(
                               controller: _amountController,
                               keyboardType: TextInputType.number,
@@ -212,7 +390,51 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
                                 return null;
                               },
                             ),
+
+                            // Quick Amount Buttons
+                            const SizedBox(height: 12),
+                            Row(
+                              children: _quickAmounts.map((amt) {
+                                return Expanded(
+                                  child: Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(horizontal: 3),
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        _amountController.text = amt.toString();
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 8),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.accent.withOpacity(0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          border: Border.all(
+                                            color:
+                                                AppTheme.accent.withOpacity(0.3),
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '₹$amt',
+                                            style: const TextStyle(
+                                              color: AppTheme.accent,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+
                             const SizedBox(height: 14),
+
+                            // Description
                             TextFormField(
                               controller: _descriptionController,
                               style: const TextStyle(color: Colors.white),
@@ -223,6 +445,8 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
                               ),
                             ),
                             const SizedBox(height: 14),
+
+                            // PIN
                             TextFormField(
                               controller: _pinController,
                               keyboardType: TextInputType.number,
@@ -241,8 +465,12 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
                                     color: AppTheme.textSecondary),
                               ),
                               validator: (v) {
-                                if (v == null || v.length != 4) return 'Enter 4-digit PIN';
-                                if (!RegExp(r'^\d{4}$').hasMatch(v)) return 'Digits only';
+                                if (v == null || v.length != 4) {
+                                  return 'Enter 4-digit PIN';
+                                }
+                                if (!RegExp(r'^\d{4}$').hasMatch(v)) {
+                                  return 'Digits only';
+                                }
                                 return null;
                               },
                             ),
@@ -252,22 +480,22 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: AppTheme.accent.withOpacity(0.1),
+                                color: AppTheme.accent.withOpacity(0.08),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: AppTheme.accent.withOpacity(0.3),
+                                  color: AppTheme.accent.withOpacity(0.2),
                                 ),
                               ),
-                              child: const Row(
+                              child: Row(
                                 children: [
-                                  Icon(Icons.info_outline,
+                                  const Icon(Icons.shield_rounded,
                                       color: AppTheme.accent, size: 18),
-                                  SizedBox(width: 8),
+                                  const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      'Transactions ≥ ₹5,000 require face liveness verification.',
+                                      'Transactions ≥ ₹5,000 require face liveness verification for security.',
                                       style: TextStyle(
-                                        color: AppTheme.accent,
+                                        color: AppTheme.accent.withOpacity(0.9),
                                         fontSize: 12,
                                       ),
                                     ),
@@ -278,16 +506,39 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
 
                             if (_errorMessage != null) ...[
                               const SizedBox(height: 12),
-                              Text(_errorMessage!,
-                                  style: const TextStyle(
-                                      color: AppTheme.error, fontSize: 13)),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.error.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.error_outline,
+                                        color: AppTheme.error, size: 18),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(_errorMessage!,
+                                          style: const TextStyle(
+                                              color: AppTheme.error,
+                                              fontSize: 13)),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ],
                             const SizedBox(height: 24),
                             FabButton(
-                              label: 'Send Money',
+                              label: _selectedTab == 0
+                                  ? 'Pay via UPI ⚡'
+                                  : _selectedTab == 2
+                                      ? 'Pay via QR'
+                                      : 'Send Money',
                               onPressed: () => _sendMoney(),
                               isLoading: _isLoading,
-                              icon: Icons.send_rounded,
+                              icon: _selectedTab == 0
+                                  ? Icons.flash_on_rounded
+                                  : Icons.send_rounded,
                             ),
                           ],
                         ),
@@ -299,6 +550,40 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  PopupMenuItem<String> _upiMenuItem(String suffix, String label) {
+    return PopupMenuItem(
+      value: suffix,
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppTheme.accent.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Center(
+              child: Icon(Icons.account_balance_rounded,
+                  color: AppTheme.accent, size: 16),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w600)),
+              Text('@$suffix',
+                  style: const TextStyle(
+                      color: AppTheme.textSecondary, fontSize: 12)),
+            ],
+          ),
+        ],
       ),
     );
   }
