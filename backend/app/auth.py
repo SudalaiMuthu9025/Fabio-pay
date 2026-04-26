@@ -54,7 +54,7 @@ def create_access_token(user_id: str, email: str, role: str) -> str:
     Create a JWT access token with user claims.
     """
     expire = datetime.now(timezone.utc) + timedelta(
-        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        minutes=settings.JWT_EXPIRE_MINUTES
     )
     payload = {
         "sub": str(user_id),

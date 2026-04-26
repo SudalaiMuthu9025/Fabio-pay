@@ -58,7 +58,26 @@ async def get_db() -> AsyncSession:  # type: ignore[misc]
 
 # ── Table Creation Helper ─────────────────────────────────────────────────────
 async def init_db() -> None:
-    """Create all tables that don't yet exist."""
+    """Create all tables that don't yet exist, and migrate missing columns."""
     async with engine.begin() as conn:
+        # 1. Create any brand-new tables
         await conn.run_sync(Base.metadata.create_all)
-    print("Database tables ready.")
+
+        # 2. Migrate: add columns that were added to models after initial deploy.
+        #    ALTER TABLE … ADD COLUMN IF NOT EXISTS is PostgreSQL ≥ 9.6.
+        migrations = [
+            """ALTER TABLE users
+               ADD COLUMN IF NOT EXISTS daily_transfer_limit
+               NUMERIC(15,2) NOT NULL DEFAULT 100000.00""",
+            """ALTER TABLE users
+               ADD COLUMN IF NOT EXISTS monthly_transfer_limit
+               NUMERIC(15,2) NOT NULL DEFAULT 1000000.00""",
+            """ALTER TABLE users
+               ADD COLUMN IF NOT EXISTS biometric_login_enabled
+               BOOLEAN NOT NULL DEFAULT FALSE""",
+        ]
+        from sqlalchemy import text
+        for sql in migrations:
+            await conn.execute(text(sql))
+
+    print("Database tables ready (migrations applied).")
