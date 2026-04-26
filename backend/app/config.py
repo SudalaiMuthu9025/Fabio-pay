@@ -22,7 +22,7 @@ class Settings(BaseSettings):
 
     # ── Database ──────────────────────────────────────────────────────────
     DATABASE_URL: str = (
-        "postgresql://postgres:7#Cristiano*real@db.zaavgfmzlnmspmuayuyz.supabase.co:5432/postgres"
+        "postgresql://postgres:fCApGafpzgDHKuTAnWkolWhoyFkfOBiG@postgres.railway.internal:5432/railway"
     )
 
     # ── JWT Auth ─────────────────────────────────────────────────────────
