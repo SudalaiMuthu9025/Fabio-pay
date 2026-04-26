@@ -79,14 +79,16 @@ class ApiService {
 
   // ── Face ──────────────────────────────────────────────────────────────
 
-  /// Dedicated Dio for face operations — MediaPipe cold-start can take 30-60s
+  /// Dedicated Dio singleton for face operations.
+  /// Very long timeouts because MediaPipe cold-start on Railway can take 60 s+.
+  static Dio? _faceDioInstance;
   static Dio get _faceDio {
-    final dio = Dio(
+    _faceDioInstance ??= Dio(
       BaseOptions(
         baseUrl: ApiConfig.baseUrl,
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 120),
-        sendTimeout: const Duration(seconds: 60),
+        connectTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 180),
+        sendTimeout: const Duration(seconds: 90),
         headers: {'Content-Type': 'application/json'},
       ),
     )..interceptors.add(
@@ -100,7 +102,7 @@ class ApiService {
           },
         ),
       );
-    return dio;
+    return _faceDioInstance!;
   }
 
   static Future<Map<String, dynamic>> registerFace(String base64Image) async {
@@ -118,7 +120,7 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> reRegisterFace(String base64Image) async {
-    final response = await _dio.post(ApiConfig.reRegisterFace, data: {
+    final response = await _faceDio.post(ApiConfig.reRegisterFace, data: {
       'image': base64Image,
     });
     return response.data;

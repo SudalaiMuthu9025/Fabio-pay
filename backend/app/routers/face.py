@@ -46,29 +46,42 @@ async def register_face(
     # If face already registered, delete old one and re-register
     if current_user.face_embedding is not None:
         logger.info("Face already registered — replacing existing embedding")
-        await db.execute(
-            delete(FaceEmbedding).where(
-                FaceEmbedding.user_id == current_user.id
+        try:
+            await db.execute(
+                delete(FaceEmbedding).where(
+                    FaceEmbedding.user_id == current_user.id
+                )
             )
-        )
-        await db.flush()
+            await db.flush()
+        except Exception as e:
+            logger.warning(f"Failed to delete old embedding: {e}")
+            # Continue anyway — the new insert will work or fail on its own
 
     # Extract face embedding from image
+    embedding = None
+    extraction_error = None
     try:
         from app.face_utils import extract_face_embedding
         embedding = extract_face_embedding(body.image)
     except Exception as e:
-        logger.exception(f"MediaPipe face extraction crashed: {e}")
+        extraction_error = str(e)
+        logger.exception(f"Face extraction crashed: {e}")
+
+    # If extraction returned None and we have an error, report it
+    if embedding is None and extraction_error:
+        logger.error(f"Face extraction failed with error: {extraction_error}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Face processing engine error: {str(e)}",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Face processing failed: {extraction_error}. "
+                   f"Please try again with a clear, well-lit photo.",
         )
 
     if embedding is None:
-        logger.warning("No face detected in image")
+        logger.warning("No face detected in image (both engines returned None)")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No face detected in the image. Please try again with a clear, well-lit photo.",
+            detail="No face detected in the image. Please ensure your face is "
+                   "clearly visible, well-lit, and centred in the frame.",
         )
 
     logger.info(f"Face embedding extracted: {len(embedding)} dimensions")
@@ -83,10 +96,28 @@ async def register_face(
         await db.flush()
     except Exception as e:
         logger.exception(f"Database error storing embedding: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save face data: {str(e)}",
-        )
+        # Try a different approach — refresh session and retry once
+        try:
+            await db.rollback()
+            # Delete any existing entry first
+            await db.execute(
+                delete(FaceEmbedding).where(
+                    FaceEmbedding.user_id == current_user.id
+                )
+            )
+            face = FaceEmbedding(
+                user_id=current_user.id,
+                embedding=embedding,
+            )
+            db.add(face)
+            await db.flush()
+            logger.info("Face embedding stored on retry")
+        except Exception as e2:
+            logger.exception(f"Database retry also failed: {e2}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to save face data. Please try again later.",
+            )
 
     logger.info(f"Face registered successfully for user {current_user.id}")
     return FaceRegisterResponse(
@@ -118,7 +149,7 @@ async def verify_face(
         from app.face_utils import extract_face_embedding, verify_face_match
         live_embedding = extract_face_embedding(body.image)
     except Exception as e:
-        logger.exception(f"MediaPipe verify crashed: {e}")
+        logger.exception(f"Face verify extraction crashed: {e}")
         return FaceVerifyResponse(
             verified=False,
             message=f"Face processing error: {str(e)}",
