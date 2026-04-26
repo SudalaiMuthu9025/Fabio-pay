@@ -5,7 +5,6 @@
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../config/theme.dart';
-import '../services/auth_service.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -45,10 +44,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   ];
 
   Future<void> _complete() async {
-    await AuthService.saveToken('onboarding_done'); // Temporary flag
-    await AuthService.deleteToken(); // Clear the temp flag
-    // Store onboarding completion flag
-    const storage = FlutterSecureStorageStub();
     if (!mounted) return;
     Navigator.pushReplacementNamed(context, '/login');
   }
@@ -132,7 +127,3 @@ class _OnboardingPage {
   const _OnboardingPage({required this.icon, required this.gradient, required this.title, required this.subtitle});
 }
 
-/// Stub — actual storage happens via AuthService
-class FlutterSecureStorageStub {
-  const FlutterSecureStorageStub();
-}

@@ -12,6 +12,7 @@ class User {
   final bool isFaceRegistered;
   final bool hasPin;
   final bool hasBankAccount;
+  final bool? biometricLoginEnabled;
   final DateTime createdAt;
 
   User({
@@ -24,6 +25,7 @@ class User {
     this.isFaceRegistered = false,
     this.hasPin = false,
     this.hasBankAccount = false,
+    this.biometricLoginEnabled,
     required this.createdAt,
   });
 
@@ -37,6 +39,7 @@ class User {
         isFaceRegistered: json['is_face_registered'] ?? false,
         hasPin: json['has_pin'] ?? false,
         hasBankAccount: json['has_bank_account'] ?? false,
+        biometricLoginEnabled: json['biometric_login_enabled'],
         createdAt: DateTime.parse(json['created_at']),
       );
 
@@ -50,6 +53,7 @@ class User {
         'is_face_registered': isFaceRegistered,
         'has_pin': hasPin,
         'has_bank_account': hasBankAccount,
+        'biometric_login_enabled': biometricLoginEnabled,
         'created_at': createdAt.toIso8601String(),
       };
 

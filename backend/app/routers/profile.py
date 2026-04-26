@@ -26,6 +26,7 @@ from app.schemas import (
     FaceRegisterResponse,
     LoginLogOut,
     ProfileUpdate,
+    UpdateLimitsRequest,
     UserOut,
 )
 from app.routers.auth import _user_to_out
@@ -221,18 +222,14 @@ async def get_limits(
     summary="Update transaction limits",
 )
 async def update_limits(
+    body: UpdateLimitsRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    body: dict = None,
 ):
-    from decimal import Decimal
-    from app.schemas import UpdateLimitsRequest
-
-    data = UpdateLimitsRequest(**(body or {}))
-    if data.daily_transfer_limit is not None:
-        current_user.daily_transfer_limit = data.daily_transfer_limit
-    if data.monthly_transfer_limit is not None:
-        current_user.monthly_transfer_limit = data.monthly_transfer_limit
+    if body.daily_transfer_limit is not None:
+        current_user.daily_transfer_limit = body.daily_transfer_limit
+    if body.monthly_transfer_limit is not None:
+        current_user.monthly_transfer_limit = body.monthly_transfer_limit
     await db.flush()
 
     return {

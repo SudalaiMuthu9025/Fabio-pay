@@ -141,7 +141,7 @@ ${_txn!.id}
 ━━━━━━━━━━━━━━━━━━━━━━
 ''';
 
-    SharePlus.instance.share(ShareParams(text: text));
+    Share.share(text);
   }
 
   void _copyTransactionId() {

@@ -147,7 +147,7 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
         NotificationService.showNotification(
           id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
           title: 'Payment Successful',
-          body: 'You sent ${_currencyFormat.format(amount)} to ${_accountController.text.trim()}',
+          body: 'You sent ${_currencyFormat.format(amount)} to ${_recipientController.text.trim()}',
         );
 
         if (!mounted) return;

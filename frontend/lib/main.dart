@@ -74,10 +74,10 @@ class _AutoLockWrapperState extends State<AutoLockWrapper> {
   }
 
   void _lockApp() {
-    // Only lock if we have a valid token (user is logged in)
-    // We check this loosely by seeing if the current route is not splash/login/onboarding
-    final currentRoute = ModalRoute.of(navigatorKey.currentContext!)?.settings.name;
-    if (currentRoute != '/' && currentRoute != '/login' && currentRoute != '/onboarding' && currentRoute != '/lock') {
+    final ctx = navigatorKey.currentContext;
+    if (ctx == null) return;
+    final currentRoute = ModalRoute.of(ctx)?.settings.name;
+    if (currentRoute != '/' && currentRoute != '/login' && currentRoute != '/register' && currentRoute != '/onboarding' && currentRoute != '/lock') {
       navigatorKey.currentState?.pushNamed('/lock');
     }
   }

@@ -137,8 +137,8 @@ class _QrPaymentScreenState extends ConsumerState<QrPaymentScreen>
         Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(
           color: Colors.white, borderRadius: BorderRadius.circular(20)),
           child: QrImageView(data: payload, version: QrVersions.auto, size: 200, backgroundColor: Colors.white,
-            eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.roundedOuter, color: Color(0xFF1a1a2e)),
-            dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.roundedOuter, color: Color(0xFF1a1a2e)))),
+            eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Color(0xFF1a1a2e)),
+            dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Color(0xFF1a1a2e)))),
         const SizedBox(height: 20),
         Text(name, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
         const SizedBox(height: 4),
