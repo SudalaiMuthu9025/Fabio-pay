@@ -6,7 +6,7 @@ class ApiConfig {
   ApiConfig._();
 
   /// REST API base URL — change to your Railway URL before building release APK
-  static const String baseUrl = 'https://helpful-warmth-production-0756.up.railway.app';
+  static const String baseUrl = 'https://helpful-warmth-production-8efb.up.railway.app';
 
   /// WebSocket base URL (derived from baseUrl)
   static String wsUrl(String token) {

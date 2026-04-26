@@ -1,91 +1,35 @@
 /// Fabio — API Service
 ///
 /// Dio-based REST client with JWT Bearer token auto-injection.
-/// Includes DNS-over-HTTPS fallback for networks that can't resolve
-/// Railway's hostname (common on Indian mobile carriers).
 
 import 'dart:convert';
-import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:dio/io.dart';
-import 'package:flutter/foundation.dart';
 import '../config/api_config.dart';
 import '../models/models.dart';
 import 'auth_service.dart';
-import 'dns_resolver.dart';
 
 class ApiService {
-  /// Apply DNS-over-HTTPS fallback to a Dio instance.
-  /// Configures the HttpClient to resolve hostnames via Google/Cloudflare DoH
-  /// when the system DNS fails.
-  static void _applyDnsWorkaround(Dio dio) {
-    final adapter = dio.httpClientAdapter;
-    if (adapter is IOHttpClientAdapter) {
-      adapter.createHttpClient = () {
-        final client = HttpClient();
-        client.connectionFactory =
-            (Uri uri, String? proxyHost, int? proxyPort) async {
-          // Try system DNS first (fast path)
-          try {
-            final socket = await Socket.startConnect(uri.host, uri.port);
-            return socket;
-          } catch (e) {
-            debugPrint('[DNS] System connect failed for ${uri.host}: $e');
+  static final Dio _dio = Dio(
+    BaseOptions(
+      baseUrl: ApiConfig.baseUrl,
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 15),
+      headers: {'Content-Type': 'application/json'},
+    ),
+  )..interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) async {
+          final token = await AuthService.getToken();
+          if (token != null) {
+            options.headers['Authorization'] = 'Bearer $token';
           }
-
-          // Fallback: resolve via DoH then connect using IP + SNI
-          final resolvedIp = await DnsResolver.resolve(uri.host);
-          if (resolvedIp != null) {
-            debugPrint('[DNS] Connecting via resolved IP: $resolvedIp');
-            return Socket.startConnect(
-              resolvedIp,
-              uri.port,
-            );
-          }
-
-          // Last resort: try system connect again (will throw original error)
-          return Socket.startConnect(uri.host, uri.port);
-        };
-
-        // Disable bad certificate checks ONLY when connecting via IP
-        // (the TLS cert is issued for the hostname, not the IP)
-        client.badCertificateCallback =
-            (X509Certificate cert, String host, int port) {
-          // Allow if the host is an IP address (our DoH fallback)
-          return RegExp(r'^\d+\.\d+\.\d+\.\d+$').hasMatch(host);
-        };
-
-        return client;
-      };
-    }
-  }
-
-  static final Dio _dio = _createDio();
-  static Dio _createDio() {
-    final dio = Dio(
-      BaseOptions(
-        baseUrl: ApiConfig.baseUrl,
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 15),
-        headers: {'Content-Type': 'application/json'},
+          handler.next(options);
+        },
+        onError: (error, handler) {
+          handler.next(error);
+        },
       ),
-    )..interceptors.add(
-        InterceptorsWrapper(
-          onRequest: (options, handler) async {
-            final token = await AuthService.getToken();
-            if (token != null) {
-              options.headers['Authorization'] = 'Bearer $token';
-            }
-            handler.next(options);
-          },
-          onError: (error, handler) {
-            handler.next(error);
-          },
-        ),
-      );
-    _applyDnsWorkaround(dio);
-    return dio;
-  }
+    );
 
   // ── Auth ──────────────────────────────────────────────────────────────
 
@@ -139,28 +83,25 @@ class ApiService {
   /// Very long timeouts because MediaPipe cold-start on Railway can take 60 s+.
   static Dio? _faceDioInstance;
   static Dio get _faceDio {
-    if (_faceDioInstance == null) {
-      _faceDioInstance = Dio(
-        BaseOptions(
-          baseUrl: ApiConfig.baseUrl,
-          connectTimeout: const Duration(seconds: 60),
-          receiveTimeout: const Duration(seconds: 180),
-          sendTimeout: const Duration(seconds: 90),
-          headers: {'Content-Type': 'application/json'},
+    _faceDioInstance ??= Dio(
+      BaseOptions(
+        baseUrl: ApiConfig.baseUrl,
+        connectTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 180),
+        sendTimeout: const Duration(seconds: 90),
+        headers: {'Content-Type': 'application/json'},
+      ),
+    )..interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) async {
+            final token = await AuthService.getToken();
+            if (token != null) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
+            handler.next(options);
+          },
         ),
-      )..interceptors.add(
-          InterceptorsWrapper(
-            onRequest: (options, handler) async {
-              final token = await AuthService.getToken();
-              if (token != null) {
-                options.headers['Authorization'] = 'Bearer $token';
-              }
-              handler.next(options);
-            },
-          ),
-        );
-      _applyDnsWorkaround(_faceDioInstance!);
-    }
+      );
     return _faceDioInstance!;
   }
 
