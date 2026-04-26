@@ -177,10 +177,23 @@ class _FaceCaptureScreenState extends ConsumerState<FaceCaptureScreen> {
         _startFaceDetection();
       }
     } on DioException catch (e) {
+      // 409 = face already registered — treat as success
+      if (e.response?.statusCode == 409) {
+        await AuthService.setFaceRegistered(true);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Face already registered!'),
+            backgroundColor: AppTheme.success,
+          ),
+        );
+        Navigator.pushReplacementNamed(context, '/bank-setup');
+        return;
+      }
       setState(() {
         final data = e.response?.data;
-        final detail = data is Map ? (data['detail'] ?? data['message']) : e.message;
-        _errorMessage = detail?.toString() ?? 'Network error occurred';
+        final detail = data is Map ? (data['detail'] ?? data['message']) : null;
+        _errorMessage = detail?.toString() ?? 'Server error (${e.response?.statusCode ?? "timeout"}): ${e.message}';
         _statusMessage = 'Try again';
         _isCapturing = false;
         _isUploading = false;
@@ -188,7 +201,7 @@ class _FaceCaptureScreenState extends ConsumerState<FaceCaptureScreen> {
       _startFaceDetection();
     } catch (e) {
       setState(() {
-        _errorMessage = 'Failed: $e';
+        _errorMessage = 'Error: $e';
         _statusMessage = 'Try again';
         _isCapturing = false;
         _isUploading = false;
@@ -302,12 +315,26 @@ class _FaceCaptureScreenState extends ConsumerState<FaceCaptureScreen> {
 
               // Capture button
               Padding(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                 child: FabButton(
                   label: 'Capture Face',
                   onPressed: _faceDetected && !_isUploading ? _captureAndUpload : null,
                   isLoading: _isUploading,
                   icon: Icons.camera_alt_rounded,
+                ),
+              ),
+
+              // Skip button
+              Padding(
+                padding: const EdgeInsets.only(left: 24, right: 24, bottom: 24),
+                child: TextButton(
+                  onPressed: _isUploading ? null : () {
+                    Navigator.pushReplacementNamed(context, '/bank-setup');
+                  },
+                  child: const Text(
+                    'Skip for now →',
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                  ),
                 ),
               ),
             ],

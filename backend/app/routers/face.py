@@ -7,13 +7,16 @@ POST /face/verify    — verify a live face image against stored embedding
 
 from __future__ import annotations
 
+import logging
+import traceback
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
 from app.config import settings
 from app.database import get_db
-from app.face_utils import extract_face_embedding, verify_face_match
 from app.models import FaceEmbedding, User
 from app.schemas import (
     FaceRegisterRequest,
@@ -22,6 +25,7 @@ from app.schemas import (
     FaceVerifyResponse,
 )
 
+logger = logging.getLogger("fabio.face")
 router = APIRouter(prefix="/face", tags=["Face"])
 
 
@@ -36,29 +40,55 @@ async def register_face(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Check if face already registered
+    logger.info(f"Face register request from user {current_user.id}")
+    logger.info(f"Image payload size: {len(body.image)} chars")
+
+    # If face already registered, delete old one and re-register
     if current_user.face_embedding is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Face already registered. Contact support to re-register.",
+        logger.info("Face already registered — replacing existing embedding")
+        await db.execute(
+            delete(FaceEmbedding).where(
+                FaceEmbedding.user_id == current_user.id
+            )
         )
+        await db.flush()
 
     # Extract face embedding from image
-    embedding = extract_face_embedding(body.image)
-    if embedding is None:
+    try:
+        from app.face_utils import extract_face_embedding
+        embedding = extract_face_embedding(body.image)
+    except Exception as e:
+        logger.exception(f"MediaPipe face extraction crashed: {e}")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No face detected in the image. Please try again with a clear photo.",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Face processing engine error: {str(e)}",
         )
 
-    # Store permanently
-    face = FaceEmbedding(
-        user_id=current_user.id,
-        embedding=embedding,
-    )
-    db.add(face)
-    await db.flush()
+    if embedding is None:
+        logger.warning("No face detected in image")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No face detected in the image. Please try again with a clear, well-lit photo.",
+        )
 
+    logger.info(f"Face embedding extracted: {len(embedding)} dimensions")
+
+    # Store permanently
+    try:
+        face = FaceEmbedding(
+            user_id=current_user.id,
+            embedding=embedding,
+        )
+        db.add(face)
+        await db.flush()
+    except Exception as e:
+        logger.exception(f"Database error storing embedding: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save face data: {str(e)}",
+        )
+
+    logger.info(f"Face registered successfully for user {current_user.id}")
     return FaceRegisterResponse(
         success=True,
         message="Face registered successfully",
@@ -84,7 +114,16 @@ async def verify_face(
         )
 
     # Extract embedding from live image
-    live_embedding = extract_face_embedding(body.image)
+    try:
+        from app.face_utils import extract_face_embedding, verify_face_match
+        live_embedding = extract_face_embedding(body.image)
+    except Exception as e:
+        logger.exception(f"MediaPipe verify crashed: {e}")
+        return FaceVerifyResponse(
+            verified=False,
+            message=f"Face processing error: {str(e)}",
+        )
+
     if live_embedding is None:
         return FaceVerifyResponse(
             verified=False,
@@ -92,11 +131,18 @@ async def verify_face(
         )
 
     # Compare against stored embedding
-    is_match = verify_face_match(
-        live_embedding=live_embedding,
-        registered_embedding=current_user.face_embedding.embedding,
-        threshold=settings.FACE_MATCH_THRESHOLD,
-    )
+    try:
+        is_match = verify_face_match(
+            live_embedding=live_embedding,
+            registered_embedding=current_user.face_embedding.embedding,
+            threshold=settings.FACE_MATCH_THRESHOLD,
+        )
+    except Exception as e:
+        logger.exception(f"Face match comparison error: {e}")
+        return FaceVerifyResponse(
+            verified=False,
+            message=f"Comparison error: {str(e)}",
+        )
 
     if is_match:
         return FaceVerifyResponse(
