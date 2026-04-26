@@ -9,6 +9,7 @@ import '../config/theme.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../widgets/glass_card.dart';
+import 'transaction_receipt_screen.dart';
 
 class TransactionHistoryScreen extends ConsumerStatefulWidget {
   const TransactionHistoryScreen({super.key});
@@ -157,9 +158,23 @@ class _TransactionHistoryScreenState
                                   itemCount: _filteredTransactions.length,
                                   itemBuilder: (context, index) {
                                     final txn = _filteredTransactions[index];
-                                    return _TransactionCard(
-                                      transaction: txn,
-                                      currencyFormat: _currencyFormat,
+                                    return GestureDetector(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                TransactionReceiptScreen(
+                                              transactionId: txn.id,
+                                              transaction: txn,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      child: _TransactionCard(
+                                        transaction: txn,
+                                        currencyFormat: _currencyFormat,
+                                      ),
                                     );
                                   },
                                 ),

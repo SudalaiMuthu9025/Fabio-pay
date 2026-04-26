@@ -31,6 +31,7 @@ from app.schemas import (
     DepositResponse,
     SendMoneyRequest,
     SendMoneyResponse,
+    TransactionDetailOut,
     TransactionOut,
 )
 
@@ -263,3 +264,86 @@ async def transaction_history(
         .order_by(Transaction.created_at.desc())
     )
     return result.scalars().all()
+
+
+# ── Transaction Detail (for receipt) ─────────────────────────────────────────
+@router.get(
+    "/{transaction_id}",
+    response_model=TransactionDetailOut,
+    summary="Get transaction detail for receipt view",
+)
+async def get_transaction_detail(
+    transaction_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    import uuid as _uuid
+    try:
+        txn_uuid = _uuid.UUID(transaction_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid transaction ID",
+        )
+
+    result = await db.execute(
+        select(Transaction).where(
+            Transaction.id == txn_uuid,
+            Transaction.user_id == current_user.id,
+        )
+    )
+    txn = result.scalar_one_or_none()
+    if txn is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Transaction not found",
+        )
+
+    # Enrich with sender/receiver names
+    sender_name = current_user.full_name
+    sender_account = None
+    receiver_name = None
+    receiver_account = txn.to_account_identifier
+
+    # Get sender's account number
+    if txn.from_account_id:
+        acc_result = await db.execute(
+            select(BankAccount).where(BankAccount.id == txn.from_account_id)
+        )
+        sender_acc = acc_result.scalar_one_or_none()
+        if sender_acc:
+            sender_account = sender_acc.account_number
+
+    # Get counterpart user name
+    if txn.counterpart_user_id:
+        user_result = await db.execute(
+            select(User).where(User.id == txn.counterpart_user_id)
+        )
+        counterpart = user_result.scalar_one_or_none()
+        if counterpart:
+            if txn.transaction_type == TransactionType.DEBIT:
+                receiver_name = counterpart.full_name
+            else:
+                sender_name = counterpart.full_name
+                receiver_name = current_user.full_name
+
+    return TransactionDetailOut(
+        id=txn.id,
+        user_id=txn.user_id,
+        counterpart_user_id=txn.counterpart_user_id,
+        transaction_type=txn.transaction_type.value,
+        from_account_id=txn.from_account_id,
+        to_account_identifier=txn.to_account_identifier,
+        amount=txn.amount,
+        currency=txn.currency,
+        description=txn.description,
+        payment_mode=txn.payment_mode.value,
+        auth_method=txn.auth_method.value,
+        status=txn.status.value,
+        ip_address=txn.ip_address,
+        created_at=txn.created_at,
+        sender_name=sender_name,
+        receiver_name=receiver_name,
+        sender_account=sender_account,
+        receiver_account=receiver_account,
+    )

@@ -159,3 +159,85 @@ async def re_register_face(
         success=True,
         message="Face re-registered successfully",
     )
+
+
+# ── Transaction Limits ──────────────────────────────────────────────────────
+@router.get(
+    "/limits",
+    summary="Get current transaction limits and usage",
+)
+async def get_limits(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from datetime import datetime, timedelta
+    from decimal import Decimal
+    from sqlalchemy import func as sqla_func
+    from app.models import Transaction, TransactionType, TransactionStatus
+
+    now = datetime.utcnow()
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    # Daily usage
+    daily_result = await db.execute(
+        select(sqla_func.coalesce(sqla_func.sum(Transaction.amount), Decimal("0")))
+        .where(
+            Transaction.user_id == current_user.id,
+            Transaction.transaction_type == TransactionType.DEBIT,
+            Transaction.status == TransactionStatus.SUCCESS,
+            Transaction.created_at >= day_start,
+        )
+    )
+    daily_used = daily_result.scalar() or Decimal("0")
+
+    # Monthly usage
+    monthly_result = await db.execute(
+        select(sqla_func.coalesce(sqla_func.sum(Transaction.amount), Decimal("0")))
+        .where(
+            Transaction.user_id == current_user.id,
+            Transaction.transaction_type == TransactionType.DEBIT,
+            Transaction.status == TransactionStatus.SUCCESS,
+            Transaction.created_at >= month_start,
+        )
+    )
+    monthly_used = monthly_result.scalar() or Decimal("0")
+
+    daily_limit = current_user.daily_transfer_limit
+    monthly_limit = current_user.monthly_transfer_limit
+
+    return {
+        "daily_transfer_limit": str(daily_limit),
+        "monthly_transfer_limit": str(monthly_limit),
+        "daily_used": str(daily_used),
+        "monthly_used": str(monthly_used),
+        "daily_remaining": str(max(daily_limit - daily_used, Decimal("0"))),
+        "monthly_remaining": str(max(monthly_limit - monthly_used, Decimal("0"))),
+    }
+
+
+@router.post(
+    "/update-limits",
+    summary="Update transaction limits",
+)
+async def update_limits(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    body: dict = None,
+):
+    from decimal import Decimal
+    from app.schemas import UpdateLimitsRequest
+
+    data = UpdateLimitsRequest(**(body or {}))
+    if data.daily_transfer_limit is not None:
+        current_user.daily_transfer_limit = data.daily_transfer_limit
+    if data.monthly_transfer_limit is not None:
+        current_user.monthly_transfer_limit = data.monthly_transfer_limit
+    await db.flush()
+
+    return {
+        "success": True,
+        "message": "Limits updated successfully",
+        "daily_transfer_limit": str(current_user.daily_transfer_limit),
+        "monthly_transfer_limit": str(current_user.monthly_transfer_limit),
+    }

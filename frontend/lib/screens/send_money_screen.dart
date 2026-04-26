@@ -5,13 +5,16 @@
 /// navigates to LivenessCheckScreen before completing.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../config/theme.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 import '../widgets/fab_button.dart';
 import '../widgets/glass_card.dart';
 import 'liveness_check_screen.dart';
+import 'transaction_receipt_screen.dart';
 
 class SendMoneyScreen extends ConsumerStatefulWidget {
   const SendMoneyScreen({super.key});
@@ -138,15 +141,28 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
       }
 
       if (result.status == 'SUCCESS') {
-        _successController.forward();
-        setState(() {
-          _successMessage =
-              'Transfer of ${_currencyFormat.format(amount)} completed!';
-        });
+        HapticFeedback.heavyImpact();
+        
+        // Trigger push notification
+        NotificationService.showNotification(
+          id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          title: 'Payment Successful',
+          body: 'You sent ${_currencyFormat.format(amount)} to ${_accountController.text.trim()}',
+        );
 
-        await Future.delayed(const Duration(seconds: 2));
         if (!mounted) return;
-        Navigator.pop(context, true); // Return true to refresh dashboard
+        // Navigate to receipt screen
+        final receiptResult = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TransactionReceiptScreen(
+              transactionId: result.transactionId,
+            ),
+          ),
+        );
+        if (!mounted) return;
+        Navigator.pop(context, true); // Return to dashboard
+        return;
       } else {
         setState(() => _errorMessage = result.message);
       }

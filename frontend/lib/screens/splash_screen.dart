@@ -3,6 +3,7 @@
 /// Checks for stored JWT token and navigates accordingly.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../config/theme.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
@@ -37,6 +38,9 @@ class _SplashScreenState extends State<SplashScreen>
     await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
 
+    // Check if onboarding has been completed
+    final onboardingDone = await _isOnboardingCompleted();
+
     final token = await AuthService.getToken();
     if (token != null) {
       try {
@@ -49,7 +53,31 @@ class _SplashScreenState extends State<SplashScreen>
       }
     }
     if (!mounted) return;
-    Navigator.pushReplacementNamed(context, '/login');
+
+    // Show onboarding for first-time users
+    if (!onboardingDone) {
+      await _setOnboardingCompleted();
+      Navigator.pushReplacementNamed(context, '/onboarding');
+    } else {
+      Navigator.pushReplacementNamed(context, '/login');
+    }
+  }
+
+  Future<bool> _isOnboardingCompleted() async {
+    try {
+      const storage = FlutterSecureStorage();
+      final val = await storage.read(key: 'fabio_onboarding_done');
+      return val == 'true';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _setOnboardingCompleted() async {
+    try {
+      const storage = FlutterSecureStorage();
+      await storage.write(key: 'fabio_onboarding_done', value: 'true');
+    } catch (_) {}
   }
 
   @override

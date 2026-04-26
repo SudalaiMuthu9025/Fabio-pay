@@ -24,7 +24,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   User? _user;
   bool _isLoading = true;
   bool _notificationsEnabled = true;
-  bool _appLockEnabled = false;
+  bool _biometricEnabled = false;
+  bool _darkMode = true;
 
   late AnimationController _slideCtrl;
   late Animation<Offset> _slideAnim;
@@ -48,12 +49,117 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
       setState(() {
         _user = user;
         _isLoading = false;
+        _biometricEnabled = user.biometricLoginEnabled ?? false;
       });
       _slideCtrl.forward();
     } catch (_) {
       if (!mounted) return;
       setState(() => _isLoading = false);
     }
+  }
+
+  // ── Transaction Limits ──────────────────────────────────────────────────
+  void _showLimitsSheet() async {
+    try {
+      final limits = await ApiService.getTransactionLimits();
+      if (!mounted) return;
+
+      final dailyCtrl = TextEditingController(text: limits['daily_transfer_limit'].toString());
+      final monthlyCtrl = TextEditingController(text: limits['monthly_transfer_limit'].toString());
+      bool isSaving = false;
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: AppTheme.surfaceCard,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (ctx) => StatefulBuilder(
+          builder: (ctx, setSheetState) => Padding(
+            padding: EdgeInsets.only(
+              left: 24, right: 24, top: 24,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                      color: AppTheme.textSecondary.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Row(
+                  children: [
+                    Icon(Icons.tune_rounded, color: AppTheme.accent, size: 22),
+                    SizedBox(width: 8),
+                    Text('Transaction Limits',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                const Text('Daily Transfer Limit (₹)',
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: dailyCtrl,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.currency_rupee_rounded, color: AppTheme.textSecondary),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text('Monthly Transfer Limit (₹)',
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: monthlyCtrl,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.currency_rupee_rounded, color: AppTheme.textSecondary),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                FabButton(
+                  label: 'Save Limits',
+                  isLoading: isSaving,
+                  onPressed: () async {
+                    setSheetState(() => isSaving = true);
+                    try {
+                      await ApiService.updateTransactionLimits(
+                        dailyLimit: double.tryParse(dailyCtrl.text),
+                        monthlyLimit: double.tryParse(monthlyCtrl.text),
+                      );
+                      if (!mounted) return;
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Limits updated successfully'),
+                          backgroundColor: AppTheme.success,
+                        ),
+                      );
+                    } catch (_) {
+                      setSheetState(() => isSaving = false);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (_) {}
   }
 
   // ── Change Password ─────────────────────────────────────────────────────
@@ -510,6 +616,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                             ),
                             _divider(),
                             _SettingsTile(
+                              icon: Icons.tune_rounded,
+                              title: 'Transaction Limits',
+                              subtitle: 'Set daily and monthly transfer caps',
+                              iconColor: const Color(0xFF00E676),
+                              onTap: _showLimitsSheet,
+                            ),
+                            _divider(),
+                            _SettingsTile(
                               icon: Icons.face_rounded,
                               title: 'Face Authentication',
                               subtitle: _user?.isFaceRegistered == true
@@ -557,15 +671,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                               onChanged: (val) =>
                                   setState(() => _notificationsEnabled = val),
                             ),
-                            _divider(),
                             _SettingsToggle(
                               icon: Icons.fingerprint_rounded,
-                              title: 'App Lock',
-                              subtitle: 'Require biometric to open app',
+                              title: 'Biometric Login',
+                              subtitle: 'Use fingerprint/FaceID to login',
                               iconColor: const Color(0xFF9C27B0),
-                              value: _appLockEnabled,
+                              value: _biometricEnabled,
+                              onChanged: (val) {
+                                setState(() => _biometricEnabled = val);
+                                // Call API to update if needed
+                              },
+                            ),
+                            _divider(),
+                            _SettingsToggle(
+                              icon: Icons.dark_mode_rounded,
+                              title: 'Dark Mode',
+                              subtitle: 'Toggle app theme',
+                              iconColor: const Color(0xFF6C63FF),
+                              value: _darkMode,
                               onChanged: (val) =>
-                                  setState(() => _appLockEnabled = val),
+                                  setState(() => _darkMode = val),
                             ),
                           ],
                         ),

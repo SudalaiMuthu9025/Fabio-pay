@@ -110,6 +110,11 @@ class TransactionModel {
   final String authMethod;
   final String status;
   final DateTime createdAt;
+  // Enriched receipt fields
+  final String? senderName;
+  final String? receiverName;
+  final String? senderAccount;
+  final String? receiverAccount;
 
   TransactionModel({
     required this.id,
@@ -125,6 +130,10 @@ class TransactionModel {
     required this.authMethod,
     required this.status,
     required this.createdAt,
+    this.senderName,
+    this.receiverName,
+    this.senderAccount,
+    this.receiverAccount,
   });
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) =>
@@ -142,6 +151,10 @@ class TransactionModel {
         authMethod: json['auth_method'],
         status: json['status'],
         createdAt: DateTime.parse(json['created_at']),
+        senderName: json['sender_name'],
+        receiverName: json['receiver_name'],
+        senderAccount: json['sender_account'],
+        receiverAccount: json['receiver_account'],
       );
 
   bool get isCredit => transactionType == 'CREDIT';
@@ -238,6 +251,40 @@ class LoginLog {
         ipAddress: json['ip_address'],
         userAgent: json['user_agent'],
         success: json['success'],
+        createdAt: DateTime.parse(json['created_at']),
+      );
+}
+
+class PaymentRequest {
+  final String id;
+  final String requesterId;
+  final String payerAccountIdentifier;
+  final double amount;
+  final String? description;
+  final String status;
+  final String? requesterName;
+  final DateTime createdAt;
+
+  PaymentRequest({
+    required this.id,
+    required this.requesterId,
+    required this.payerAccountIdentifier,
+    required this.amount,
+    this.description,
+    required this.status,
+    this.requesterName,
+    required this.createdAt,
+  });
+
+  factory PaymentRequest.fromJson(Map<String, dynamic> json) =>
+      PaymentRequest(
+        id: json['id'],
+        requesterId: json['requester_id'],
+        payerAccountIdentifier: json['payer_account_identifier'],
+        amount: double.tryParse(json['amount'].toString()) ?? 0.0,
+        description: json['description'],
+        status: json['status'],
+        requesterName: json['requester_name'],
         createdAt: DateTime.parse(json['created_at']),
       );
 }

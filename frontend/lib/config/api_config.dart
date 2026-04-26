@@ -27,6 +27,7 @@ class ApiConfig {
   static const String transactionsSend = '/transactions/send';
   static const String transactionsDeposit = '/transactions/deposit';
   static const String transactionsHistory = '/transactions/history';
+  static String transactionDetail(String id) => '/transactions/$id';
 
   /// API Endpoints — Beneficiary
   static const String beneficiaryAdd = '/beneficiary/add';
@@ -40,6 +41,22 @@ class ApiConfig {
   static const String changePin = '/profile/change-pin';
   static const String loginHistory = '/profile/login-history';
   static const String reRegisterFace = '/profile/re-register-face';
+  static const String profileLimits = '/profile/limits';
+  static const String profileUpdateLimits = '/profile/update-limits';
+
+  /// API Endpoints — Analytics
+  static const String spendingSummary = '/analytics/spending-summary';
+
+  /// API Endpoints — QR
+  static const String qrMyCode = '/qr/my-code';
+  static const String qrDecode = '/qr/decode';
+
+  /// API Endpoints — Payment Requests
+  static const String requestCreate = '/requests/create';
+  static const String requestIncoming = '/requests/incoming';
+  static const String requestOutgoing = '/requests/outgoing';
+  static String requestPay(String id) => '/requests/$id/pay';
+  static String requestDecline(String id) => '/requests/$id/decline';
 
   /// API Endpoints — Admin
   static const String adminUsers = '/admin/users';

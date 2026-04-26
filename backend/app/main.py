@@ -15,6 +15,7 @@ from app.config import settings
 from app.database import init_db
 from app.routers import auth, bank, face, transactions, beneficiary, profile
 from app.routers import admin as admin_router
+from app.routers import analytics, qr, requests as requests_router
 
 
 # ── Lifespan ──────────────────────────────────────────────────────────────────
@@ -72,6 +73,9 @@ app.include_router(transactions.router)
 app.include_router(beneficiary.router)
 app.include_router(profile.router)
 app.include_router(admin_router.router)
+app.include_router(analytics.router)
+app.include_router(qr.router)
+app.include_router(requests_router.router)
 
 
 # ── Health Check ──────────────────────────────────────────────────────────────

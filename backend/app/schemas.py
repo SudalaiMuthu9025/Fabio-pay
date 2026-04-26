@@ -271,3 +271,108 @@ class StatusUpdate(BaseModel):
     """PATCH /admin/users/{id}/status"""
     is_active: bool
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  TRANSACTION DETAIL (for receipts)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TransactionDetailOut(BaseModel):
+    """GET /transactions/{id} — full receipt detail."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    user_id: uuid.UUID
+    counterpart_user_id: Optional[uuid.UUID] = None
+    transaction_type: str = "DEBIT"
+    from_account_id: Optional[uuid.UUID] = None
+    to_account_identifier: str
+    amount: Decimal
+    currency: str
+    description: Optional[str] = None
+    payment_mode: str = "ACCOUNT"
+    auth_method: str
+    status: str
+    ip_address: Optional[str] = None
+    created_at: datetime
+    # Enriched fields for receipt
+    sender_name: Optional[str] = None
+    receiver_name: Optional[str] = None
+    sender_account: Optional[str] = None
+    receiver_account: Optional[str] = None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  SPENDING ANALYTICS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class DailySpending(BaseModel):
+    """Single day's spending summary."""
+    date: str
+    sent: Decimal = Decimal("0")
+    received: Decimal = Decimal("0")
+
+
+class MonthlySpending(BaseModel):
+    """Single month's spending summary."""
+    month: str
+    sent: Decimal = Decimal("0")
+    received: Decimal = Decimal("0")
+
+
+class SpendingSummary(BaseModel):
+    """GET /analytics/spending-summary response."""
+    weekly: list[DailySpending] = []
+    monthly: list[MonthlySpending] = []
+    total_sent: Decimal = Decimal("0")
+    total_received: Decimal = Decimal("0")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  PAYMENT REQUESTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class PaymentRequestCreate(BaseModel):
+    """POST /requests/create"""
+    to_account_identifier: str = Field(..., min_length=3, max_length=255)
+    amount: Decimal = Field(..., gt=0)
+    description: Optional[str] = None
+
+
+class PaymentRequestOut(BaseModel):
+    """Payment request response."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    requester_id: uuid.UUID
+    payer_account_identifier: str
+    amount: Decimal
+    description: Optional[str] = None
+    status: str
+    requester_name: Optional[str] = None
+    created_at: datetime
+
+
+class PaymentRequestAction(BaseModel):
+    """POST /requests/{id}/pay"""
+    pin: str = Field(..., min_length=4, max_length=4, pattern=r"^\d{4}$")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  TRANSACTION LIMITS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class UpdateLimitsRequest(BaseModel):
+    """POST /profile/update-limits"""
+    daily_transfer_limit: Optional[Decimal] = Field(None, gt=0, le=10000000)
+    monthly_transfer_limit: Optional[Decimal] = Field(None, gt=0, le=100000000)
+
+
+class LimitsResponse(BaseModel):
+    """GET /profile/limits"""
+    daily_transfer_limit: Decimal
+    monthly_transfer_limit: Decimal
+    daily_used: Decimal = Decimal("0")
+    monthly_used: Decimal = Decimal("0")
+    daily_remaining: Decimal = Decimal("0")
+    monthly_remaining: Decimal = Decimal("0")
+

@@ -618,16 +618,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         onTap: _showDepositDialog,
                       ),
                       _QuickAction(
-                        icon: Icons.flash_on_rounded,
-                        label: 'UPI Pay',
+                        icon: Icons.qr_code_scanner_rounded,
+                        label: 'QR Pay',
                         gradient: const LinearGradient(
                           colors: [Color(0xFFFF6D00), Color(0xFFFF9100)],
                         ),
                         onTap: () async {
                           final result = await Navigator.pushNamed(
-                              context, '/send-money');
+                              context, '/qr-payment');
                           if (result == true) _loadData();
                         },
+                      ),
+                      _QuickAction(
+                        icon: Icons.request_page_rounded,
+                        label: 'Request',
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFE040FB), Color(0xFFAA00FF)],
+                        ),
+                        onTap: () => Navigator.pushNamed(context, '/request-money'),
+                      ),
+                      _QuickAction(
+                        icon: Icons.analytics_rounded,
+                        label: 'Analytics',
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF00BCD4), Color(0xFF0097A7)],
+                        ),
+                        onTap: () =>
+                            Navigator.pushNamed(context, '/analytics'),
                       ),
                       _QuickAction(
                         icon: Icons.history_rounded,
@@ -642,10 +659,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         icon: Icons.people_rounded,
                         label: 'Contacts',
                         gradient: const LinearGradient(
-                          colors: [Color(0xFF00BCD4), Color(0xFF0097A7)],
+                          colors: [Color(0xFFFFAB40), Color(0xFFFF6D00)],
                         ),
                         onTap: () =>
                             Navigator.pushNamed(context, '/beneficiaries'),
+                      ),
+                      _QuickAction(
+                        icon: Icons.person_rounded,
+                        label: 'Profile',
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF26C6DA), Color(0xFF00838F)],
+                        ),
+                        onTap: () =>
+                            Navigator.pushNamed(context, '/profile'),
                       ),
                       _QuickAction(
                         icon: Icons.settings_rounded,

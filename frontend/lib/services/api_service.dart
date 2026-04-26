@@ -268,4 +268,87 @@ class ApiService {
     );
     return User.fromJson(response.data);
   }
+
+  // ── Transaction Detail (Receipt) ──────────────────────────────────────
+
+  static Future<TransactionModel> getTransactionDetail(String id) async {
+    final response = await _dio.get(ApiConfig.transactionDetail(id));
+    return TransactionModel.fromJson(response.data);
+  }
+
+  // ── Spending Analytics ────────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>> getSpendingSummary() async {
+    final response = await _dio.get(ApiConfig.spendingSummary);
+    return response.data;
+  }
+
+  // ── QR Code ───────────────────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>> getMyQrCode() async {
+    final response = await _dio.get(ApiConfig.qrMyCode);
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> decodeQr(String payload) async {
+    final response = await _dio.post(ApiConfig.qrDecode, data: {
+      'payload': payload,
+    });
+    return response.data;
+  }
+
+  // ── Payment Requests ──────────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>> createPaymentRequest({
+    required String toAccountIdentifier,
+    required double amount,
+    String? description,
+  }) async {
+    final response = await _dio.post(ApiConfig.requestCreate, data: {
+      'to_account_identifier': toAccountIdentifier,
+      'amount': amount,
+      if (description != null) 'description': description,
+    });
+    return response.data;
+  }
+
+  static Future<List<Map<String, dynamic>>> getIncomingRequests() async {
+    final response = await _dio.get(ApiConfig.requestIncoming);
+    return (response.data as List).cast<Map<String, dynamic>>();
+  }
+
+  static Future<List<Map<String, dynamic>>> getOutgoingRequests() async {
+    final response = await _dio.get(ApiConfig.requestOutgoing);
+    return (response.data as List).cast<Map<String, dynamic>>();
+  }
+
+  static Future<Map<String, dynamic>> payRequest(String id, String pin) async {
+    final response = await _dio.post(ApiConfig.requestPay(id), data: {
+      'pin': pin,
+    });
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> declineRequest(String id) async {
+    final response = await _dio.post(ApiConfig.requestDecline(id));
+    return response.data;
+  }
+
+  // ── Transaction Limits ────────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>> getTransactionLimits() async {
+    final response = await _dio.get(ApiConfig.profileLimits);
+    return response.data;
+  }
+
+  static Future<Map<String, dynamic>> updateTransactionLimits({
+    double? dailyLimit,
+    double? monthlyLimit,
+  }) async {
+    final data = <String, dynamic>{};
+    if (dailyLimit != null) data['daily_transfer_limit'] = dailyLimit;
+    if (monthlyLimit != null) data['monthly_transfer_limit'] = monthlyLimit;
+    final response = await _dio.post(ApiConfig.profileUpdateLimits, data: data);
+    return response.data;
+  }
 }
