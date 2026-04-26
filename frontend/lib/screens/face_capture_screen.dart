@@ -5,6 +5,8 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:image/image.dart' as img;
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -132,8 +134,23 @@ class _FaceCaptureScreenState extends ConsumerState<FaceCaptureScreen> {
       // Stop the stream before capturing
       await _cameraController!.stopImageStream();
       final xFile = await _cameraController!.takePicture();
-      final bytes = await xFile.readAsBytes();
-      final base64Image = base64Encode(bytes);
+      final rawBytes = await xFile.readAsBytes();
+
+      setState(() => _statusMessage = 'Processing image...');
+
+      // Compress image to reduce payload size (critical for Railway upload)
+      final original = img.decodeImage(rawBytes);
+      Uint8List finalBytes;
+      if (original != null) {
+        // Resize to max 480px wide + JPEG compress to 70% quality
+        final resized = original.width > 480
+            ? img.copyResize(original, width: 480)
+            : original;
+        finalBytes = Uint8List.fromList(img.encodeJpg(resized, quality: 70));
+      } else {
+        finalBytes = rawBytes;
+      }
+      final base64Image = base64Encode(finalBytes);
 
       setState(() => _statusMessage = 'Uploading face data...');
 

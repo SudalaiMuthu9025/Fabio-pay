@@ -79,15 +79,39 @@ class ApiService {
 
   // ── Face ──────────────────────────────────────────────────────────────
 
+  /// Dedicated Dio for face operations — MediaPipe cold-start can take 30-60s
+  static Dio get _faceDio {
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: ApiConfig.baseUrl,
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 120),
+        sendTimeout: const Duration(seconds: 60),
+        headers: {'Content-Type': 'application/json'},
+      ),
+    )..interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) async {
+            final token = await AuthService.getToken();
+            if (token != null) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
+            handler.next(options);
+          },
+        ),
+      );
+    return dio;
+  }
+
   static Future<Map<String, dynamic>> registerFace(String base64Image) async {
-    final response = await _dio.post(ApiConfig.faceRegister, data: {
+    final response = await _faceDio.post(ApiConfig.faceRegister, data: {
       'image': base64Image,
     });
     return response.data;
   }
 
   static Future<Map<String, dynamic>> verifyFace(String base64Image) async {
-    final response = await _dio.post(ApiConfig.faceVerify, data: {
+    final response = await _faceDio.post(ApiConfig.faceVerify, data: {
       'image': base64Image,
     });
     return response.data;
