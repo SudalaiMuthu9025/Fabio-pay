@@ -21,7 +21,9 @@ class Settings(BaseSettings):
     )
 
     # ── Database ──────────────────────────────────────────────────────────
-    DATABASE_URL: str = "postgresql+asyncpg://fabio:fabio@localhost:5432/fabio_db"
+    DATABASE_URL: str = (
+        "postgresql://postgres:7#Cristiano*real@db.zaavgfmzlnmspmuayuyz.supabase.co:5432/postgres"
+    )
 
     # ── JWT Auth ─────────────────────────────────────────────────────────
     SECRET_KEY: str = "CHANGE-ME-in-production-use-openssl-rand-hex-32"
