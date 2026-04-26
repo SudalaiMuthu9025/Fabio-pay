@@ -8,6 +8,7 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import '../config/theme.dart';
 import '../services/api_service.dart';
@@ -53,7 +54,7 @@ class _FaceCaptureScreenState extends ConsumerState<FaceCaptureScreen> {
 
       _cameraController = CameraController(
         frontCamera,
-        ResolutionPreset.high,
+        ResolutionPreset.medium,
         enableAudio: false,
         imageFormatGroup: Platform.isAndroid
             ? ImageFormatGroup.nv21
@@ -158,9 +159,19 @@ class _FaceCaptureScreenState extends ConsumerState<FaceCaptureScreen> {
         });
         _startFaceDetection();
       }
+    } on DioException catch (e) {
+      setState(() {
+        final data = e.response?.data;
+        final detail = data is Map ? (data['detail'] ?? data['message']) : e.message;
+        _errorMessage = detail?.toString() ?? 'Network error occurred';
+        _statusMessage = 'Try again';
+        _isCapturing = false;
+        _isUploading = false;
+      });
+      _startFaceDetection();
     } catch (e) {
       setState(() {
-        _errorMessage = 'Failed to register face. Please try again.';
+        _errorMessage = 'Failed: $e';
         _statusMessage = 'Try again';
         _isCapturing = false;
         _isUploading = false;
