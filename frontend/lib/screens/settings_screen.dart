@@ -89,7 +89,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                   child: Container(
                     width: 40, height: 4,
                     decoration: BoxDecoration(
-                      color: AppTheme.textSecondary.withOpacity(0.3),
+                      color: AppTheme.textSecondary.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -191,7 +191,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                 child: Container(
                   width: 40, height: 4,
                   decoration: BoxDecoration(
-                    color: AppTheme.textSecondary.withOpacity(0.3),
+                    color: AppTheme.textSecondary.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -326,7 +326,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                 child: Container(
                   width: 40, height: 4,
                   decoration: BoxDecoration(
-                    color: AppTheme.textSecondary.withOpacity(0.3),
+                    color: AppTheme.textSecondary.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -559,7 +559,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 12, vertical: 6),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.accent.withOpacity(0.15),
+                                  color: AppTheme.accent.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Text('Edit',
@@ -604,7 +604,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 8, vertical: 3),
                                       decoration: BoxDecoration(
-                                        color: AppTheme.warning.withOpacity(0.15),
+                                        color: AppTheme.warning.withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: const Text('Set Up',
@@ -640,7 +640,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 8, vertical: 3),
                                       decoration: BoxDecoration(
-                                        color: AppTheme.error.withOpacity(0.15),
+                                        color: AppTheme.error.withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: const Text('Not Set',
@@ -767,10 +767,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           decoration: BoxDecoration(
-                            color: AppTheme.error.withOpacity(0.1),
+                            color: AppTheme.error.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                                color: AppTheme.error.withOpacity(0.3)),
+                                color: AppTheme.error.withValues(alpha: 0.3)),
                           ),
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -844,7 +844,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   }
 
   Widget _divider() => Divider(
-        color: Colors.white.withOpacity(0.06),
+        color: Colors.white.withValues(alpha: 0.06),
         height: 1,
         indent: 56,
       );
@@ -894,7 +894,7 @@ class _SettingsTile extends StatelessWidget {
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: iconColor.withOpacity(0.15),
+          color: iconColor.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(icon, color: iconColor, size: 20),
@@ -936,7 +936,7 @@ class _SettingsToggle extends StatelessWidget {
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: iconColor.withOpacity(0.15),
+          color: iconColor.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(icon, color: iconColor, size: 20),

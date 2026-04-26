@@ -155,7 +155,7 @@ class _SpendingAnalyticsScreenState
                                     height: 44,
                                     decoration: BoxDecoration(
                                       color:
-                                          AppTheme.accent.withOpacity(0.15),
+                                          AppTheme.accent.withValues(alpha: 0.15),
                                       borderRadius: BorderRadius.circular(14),
                                     ),
                                     child: const Icon(
@@ -333,7 +333,7 @@ class _SpendingAnalyticsScreenState
           drawVerticalLine: false,
           horizontalInterval: maxVal > 0 ? maxVal / 4 : 250,
           getDrawingHorizontalLine: (value) => FlLine(
-            color: Colors.white.withOpacity(0.05),
+            color: Colors.white.withValues(alpha: 0.05),
             strokeWidth: 1,
           ),
         ),
@@ -429,7 +429,7 @@ class _SpendingAnalyticsScreenState
           drawVerticalLine: false,
           horizontalInterval: maxVal > 0 ? maxVal / 4 : 250,
           getDrawingHorizontalLine: (value) => FlLine(
-            color: Colors.white.withOpacity(0.05),
+            color: Colors.white.withValues(alpha: 0.05),
             strokeWidth: 1,
           ),
         ),
@@ -495,7 +495,7 @@ class _SummaryCard extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
+                  color: color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: color, size: 18),

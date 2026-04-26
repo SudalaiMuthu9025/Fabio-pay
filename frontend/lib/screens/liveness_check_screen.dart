@@ -407,7 +407,7 @@ class _LivenessCheckScreenState extends ConsumerState<LivenessCheckScreen>
                                   ? AppTheme.success
                                   : isCurrent
                                       ? AppTheme.accent
-                                      : AppTheme.textSecondary.withOpacity(0.2),
+                                      : AppTheme.textSecondary.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(3),
                             ),
                           ),
@@ -428,9 +428,9 @@ class _LivenessCheckScreenState extends ConsumerState<LivenessCheckScreen>
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: isCompleted
-                                ? AppTheme.success.withOpacity(0.2)
+                                ? AppTheme.success.withValues(alpha: 0.2)
                                 : isCurrent
-                                    ? AppTheme.accent.withOpacity(0.15)
+                                    ? AppTheme.accent.withValues(alpha: 0.15)
                                     : Colors.transparent,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
@@ -438,7 +438,7 @@ class _LivenessCheckScreenState extends ConsumerState<LivenessCheckScreen>
                                   ? AppTheme.success
                                   : isCurrent
                                       ? AppTheme.accent
-                                      : AppTheme.textSecondary.withOpacity(0.3),
+                                      : AppTheme.textSecondary.withValues(alpha: 0.3),
                               width: isCurrent ? 2 : 1,
                             ),
                           ),
@@ -516,7 +516,7 @@ class _LivenessCheckScreenState extends ConsumerState<LivenessCheckScreen>
                                   gradient: _timeRemaining <= 2
                                       ? LinearGradient(colors: [
                                           AppTheme.error,
-                                          AppTheme.error.withOpacity(0.7),
+                                          AppTheme.error.withValues(alpha: 0.7),
                                         ])
                                       : LinearGradient(colors: [
                                           Colors.black54,
@@ -551,7 +551,7 @@ class _LivenessCheckScreenState extends ConsumerState<LivenessCheckScreen>
                                 width: 80,
                                 height: 80,
                                 decoration: BoxDecoration(
-                                  color: AppTheme.success.withOpacity(0.9),
+                                  color: AppTheme.success.withValues(alpha: 0.9),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -569,7 +569,7 @@ class _LivenessCheckScreenState extends ConsumerState<LivenessCheckScreen>
                                 color: (_verificationSuccess
                                         ? AppTheme.success
                                         : AppTheme.error)
-                                    .withOpacity(0.3),
+                                    .withValues(alpha: 0.3),
                                 borderRadius: BorderRadius.circular(24),
                               ),
                               child: Center(
@@ -620,13 +620,13 @@ class _LivenessCheckScreenState extends ConsumerState<LivenessCheckScreen>
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            AppTheme.primary.withOpacity(0.3),
-                            AppTheme.accent.withOpacity(0.15),
+                            AppTheme.primary.withValues(alpha: 0.3),
+                            AppTheme.accent.withValues(alpha: 0.15),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: AppTheme.accent.withOpacity(0.3),
+                          color: AppTheme.accent.withValues(alpha: 0.3),
                         ),
                       ),
                       child: Column(
@@ -699,7 +699,7 @@ class _OvalGuidePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = color.withOpacity(0.7)
+      ..color = color.withValues(alpha: 0.7)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.0;
 
@@ -714,7 +714,7 @@ class _OvalGuidePainter extends CustomPainter {
 
     // Draw corner brackets for premium look
     final bracketPaint = Paint()
-      ..color = color.withOpacity(0.5)
+      ..color = color.withValues(alpha: 0.5)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0
       ..strokeCap = StrokeCap.round;

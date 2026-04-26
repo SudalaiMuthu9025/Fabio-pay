@@ -194,7 +194,7 @@ class _RequestMoneyScreenState extends ConsumerState<RequestMoneyScreen>
   Widget _buildIncomingTab() {
     if (_loadingIncoming) return const Center(child: CircularProgressIndicator(color: AppTheme.accent));
     if (_incoming.isEmpty) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Icon(Icons.inbox_rounded, color: AppTheme.textSecondary.withOpacity(0.3), size: 64),
+      Icon(Icons.inbox_rounded, color: AppTheme.textSecondary.withValues(alpha: 0.3), size: 64),
       const SizedBox(height: 12),
       const Text('No incoming requests', style: TextStyle(color: AppTheme.textSecondary)),
     ]));
@@ -208,7 +208,7 @@ class _RequestMoneyScreenState extends ConsumerState<RequestMoneyScreen>
   Widget _buildOutgoingTab() {
     if (_loadingOutgoing) return const Center(child: CircularProgressIndicator(color: AppTheme.accent));
     if (_outgoing.isEmpty) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Icon(Icons.outbox_rounded, color: AppTheme.textSecondary.withOpacity(0.3), size: 64),
+      Icon(Icons.outbox_rounded, color: AppTheme.textSecondary.withValues(alpha: 0.3), size: 64),
       const SizedBox(height: 12),
       const Text('No outgoing requests', style: TextStyle(color: AppTheme.textSecondary)),
     ]));
@@ -239,7 +239,7 @@ class _RequestCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(width: 40, height: 40, decoration: BoxDecoration(
-            color: (isIncoming ? AppTheme.accent : AppTheme.success).withOpacity(0.15),
+            color: (isIncoming ? AppTheme.accent : AppTheme.success).withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(12)),
             child: Icon(isIncoming ? Icons.call_received_rounded : Icons.call_made_rounded,
               color: isIncoming ? AppTheme.accent : AppTheme.success, size: 20)),
@@ -253,7 +253,7 @@ class _RequestCard extends StatelessWidget {
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Text(fmt.format(amount), style: TextStyle(color: statusColor, fontWeight: FontWeight.w600, fontSize: 16)),
             Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(color: statusColor.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
+              decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
               child: Text(status, style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w600))),
           ]),
         ]),

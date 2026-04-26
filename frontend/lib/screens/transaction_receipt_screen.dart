@@ -232,7 +232,7 @@ ${_txn!.id}
                                     color: (isSuccess
                                             ? AppTheme.success
                                             : AppTheme.error)
-                                        .withOpacity(0.4),
+                                        .withValues(alpha: 0.4),
                                     blurRadius: 24,
                                     offset: const Offset(0, 8),
                                   ),
@@ -284,7 +284,7 @@ ${_txn!.id}
                                     color: (isCredit
                                             ? AppTheme.success
                                             : AppTheme.accent)
-                                        .withOpacity(0.15),
+                                        .withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: Text(
@@ -383,7 +383,7 @@ ${_txn!.id}
                                       height: 36,
                                       decoration: BoxDecoration(
                                         color:
-                                            AppTheme.accent.withOpacity(0.15),
+                                            AppTheme.accent.withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: const Icon(
@@ -472,7 +472,7 @@ ${_txn!.id}
   }
 
   Widget _receiptDivider() => Divider(
-        color: Colors.white.withOpacity(0.06),
+        color: Colors.white.withValues(alpha: 0.06),
         height: 1,
       );
 
@@ -555,7 +555,7 @@ class _ActionButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: gradient.colors.first.withOpacity(0.3),
+              color: gradient.colors.first.withValues(alpha: 0.3),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),

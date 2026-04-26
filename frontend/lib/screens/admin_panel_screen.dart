@@ -157,8 +157,8 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen>
                                     height: 42,
                                     decoration: BoxDecoration(
                                       color: u.role == 'ADMIN'
-                                          ? AppTheme.error.withOpacity(0.2)
-                                          : AppTheme.primary.withOpacity(0.2),
+                                          ? AppTheme.error.withValues(alpha: 0.2)
+                                          : AppTheme.primary.withValues(alpha: 0.2),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Center(
@@ -199,8 +199,8 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen>
                                         horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
                                       color: u.isActive
-                                          ? AppTheme.success.withOpacity(0.1)
-                                          : AppTheme.error.withOpacity(0.1),
+                                          ? AppTheme.success.withValues(alpha: 0.1)
+                                          : AppTheme.error.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
@@ -217,7 +217,7 @@ class _AdminPanelScreenState extends ConsumerState<AdminPanelScreen>
                                 ],
                               ),
                               const SizedBox(height: 12),
-                              Divider(color: Colors.white.withOpacity(0.1)),
+                              Divider(color: Colors.white.withValues(alpha: 0.1)),
                               const SizedBox(height: 8),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,

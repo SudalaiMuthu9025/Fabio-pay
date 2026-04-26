@@ -1,15 +1,19 @@
 """
-Fabio Backend — Application Configuration
-==========================================
-Loads settings from environment variables (or .env file).
+Fabio Backend — Application Configuration (fixed)
+==================================================
+Key fixes vs original:
+  • JWT_EXPIRE_MINUTES kept consistent (was referenced both ways)
+  • Added SESSION_EXPIRE_HOURS (used in .env.example)
+  • Added EAR_THRESHOLD, MAR_THRESHOLD, CHALLENGE_COUNT (liveness engine)
+  • PANIC_TIMER_SECONDS kept
+  • TRANSACTION_THRESHOLD kept
 """
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-class Settings(BaseSettings):
-    """Central configuration loaded from environment / .env file."""
 
+class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -17,20 +21,25 @@ class Settings(BaseSettings):
     )
 
     # ── Database ──────────────────────────────────────────────────────────
-    DATABASE_URL: str = (
-        "postgresql+asyncpg://fabio:fabio@localhost:5432/fabio_db"
-    )
+    DATABASE_URL: str = "postgresql+asyncpg://fabio:fabio@localhost:5432/fabio_db"
 
     # ── JWT Auth ─────────────────────────────────────────────────────────
     SECRET_KEY: str = "CHANGE-ME-in-production-use-openssl-rand-hex-32"
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRE_MINUTES: int = 1440  # 24 hours
+    JWT_EXPIRE_MINUTES: int = 1440          # 24 hours
+    SESSION_EXPIRE_HOURS: int = 24          # alias used by .env.example
 
-    # ── Transaction ──────────────────────────────────────────────────────
-    TRANSACTION_THRESHOLD: float = 5000.00  # ₹5000 default
+    # ── Transaction security ──────────────────────────────────────────────
+    TRANSACTION_THRESHOLD: float = 5000.00  # ₹5 000 triggers liveness
 
-    # ── Face Verification ────────────────────────────────────────────────
-    FACE_MATCH_THRESHOLD: float = 0.35  # cosine distance threshold
+    # ── Face verification ─────────────────────────────────────────────────
+    FACE_MATCH_THRESHOLD: float = 0.35      # cosine distance
+
+    # ── Liveness challenge ────────────────────────────────────────────────
+    EAR_THRESHOLD: float = 0.20             # eye aspect ratio → blink
+    MAR_THRESHOLD: float = 0.50             # mouth aspect ratio → smile
+    CHALLENGE_COUNT: int = 3               # actions per challenge
+    PANIC_TIMER_SECONDS: int = 15          # total window per challenge
 
     # ── General ───────────────────────────────────────────────────────────
     APP_NAME: str = "Fabio"
@@ -38,7 +47,7 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = "*"
 
     @model_validator(mode="after")
-    def fix_db_url(self) -> 'Settings':
+    def fix_db_url(self) -> "Settings":
         if self.DATABASE_URL:
             if self.DATABASE_URL.startswith("postgres://"):
                 self.DATABASE_URL = self.DATABASE_URL.replace(
@@ -49,5 +58,6 @@ class Settings(BaseSettings):
                     "postgresql://", "postgresql+asyncpg://", 1
                 )
         return self
+
 
 settings = Settings()

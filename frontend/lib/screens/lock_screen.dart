@@ -78,7 +78,7 @@ class _LockScreenState extends State<LockScreen> with SingleTickerProviderStateM
             mainAxisSize: MainAxisSize.min, children: [
               Container(width: 80, height: 80, decoration: BoxDecoration(
                 gradient: AppTheme.primaryGradient, shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: AppTheme.accent.withOpacity(0.3), blurRadius: 20)]),
+                boxShadow: [BoxShadow(color: AppTheme.accent.withValues(alpha: 0.3), blurRadius: 20)]),
                 child: const Icon(Icons.lock_rounded, color: Colors.white, size: 40)),
               const SizedBox(height: 24),
               const Text('Session Locked', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700)),
@@ -113,7 +113,7 @@ class _LockScreenState extends State<LockScreen> with SingleTickerProviderStateM
                     width: 52,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.accent.withOpacity(0.2),
+                        backgroundColor: AppTheme.accent.withValues(alpha: 0.2),
                         padding: EdgeInsets.zero,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),

@@ -82,7 +82,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     child: Container(width: 120, height: 120, decoration: BoxDecoration(
                       gradient: LinearGradient(colors: page.gradient),
                       shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: page.gradient[0].withOpacity(0.4), blurRadius: 30, offset: const Offset(0, 10))]),
+                      boxShadow: [BoxShadow(color: page.gradient[0].withValues(alpha: 0.4), blurRadius: 30, offset: const Offset(0, 10))]),
                       child: Icon(page.icon, color: Colors.white, size: 56))),
                   const SizedBox(height: 48),
                   Text(page.title, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800),
@@ -98,12 +98,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Padding(padding: const EdgeInsets.all(32), child: Column(children: [
             SmoothPageIndicator(controller: _controller, count: _pages.length,
               effect: ExpandingDotsEffect(
-                activeDotColor: AppTheme.accent, dotColor: AppTheme.textSecondary.withOpacity(0.3),
+                activeDotColor: AppTheme.accent, dotColor: AppTheme.textSecondary.withValues(alpha: 0.3),
                 dotHeight: 8, dotWidth: 8, expansionFactor: 3)),
             const SizedBox(height: 32),
             SizedBox(width: double.infinity, height: 56, child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: isLast ? AppTheme.accent : Colors.white.withOpacity(0.1),
+                backgroundColor: isLast ? AppTheme.accent : Colors.white.withValues(alpha: 0.1),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18))),
               onPressed: () {
                 if (isLast) { _complete(); }

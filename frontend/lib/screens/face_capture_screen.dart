@@ -299,8 +299,8 @@ class _OvalOverlayPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = faceDetected
-          ? AppTheme.success.withOpacity(0.8)
-          : AppTheme.accent.withOpacity(0.6)
+          ? AppTheme.success.withValues(alpha: 0.8)
+          : AppTheme.accent.withValues(alpha: 0.6)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.0;
 

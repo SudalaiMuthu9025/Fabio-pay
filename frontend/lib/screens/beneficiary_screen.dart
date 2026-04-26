@@ -81,7 +81,7 @@ class _BeneficiaryScreenState extends ConsumerState<BeneficiaryScreen>
                 child: Container(
                   width: 40, height: 4,
                   decoration: BoxDecoration(
-                    color: AppTheme.textSecondary.withOpacity(0.3),
+                    color: AppTheme.textSecondary.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -259,7 +259,7 @@ class _BeneficiaryScreenState extends ConsumerState<BeneficiaryScreen>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.people_outline_rounded,
-                              color: AppTheme.textSecondary.withOpacity(0.4),
+                              color: AppTheme.textSecondary.withValues(alpha: 0.4),
                               size: 64),
                           const SizedBox(height: 16),
                           const Text('No saved contacts yet',
@@ -293,7 +293,7 @@ class _BeneficiaryScreenState extends ConsumerState<BeneficiaryScreen>
                                 padding:
                                     const EdgeInsets.symmetric(horizontal: 20),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.error.withOpacity(0.2),
+                                  color: AppTheme.error.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: const Icon(Icons.delete_rounded,
@@ -347,9 +347,9 @@ class _BeneficiaryScreenState extends ConsumerState<BeneficiaryScreen>
                                           gradient: LinearGradient(
                                             colors: [
                                               AppTheme.primary
-                                                  .withOpacity(0.6),
+                                                  .withValues(alpha: 0.6),
                                               AppTheme.accent
-                                                  .withOpacity(0.4),
+                                                  .withValues(alpha: 0.4),
                                             ],
                                           ),
                                           borderRadius:

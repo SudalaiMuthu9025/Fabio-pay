@@ -109,7 +109,7 @@ class _SetPinScreenState extends ConsumerState<SetPinScreen>
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: AppTheme.primary.withOpacity(0.35),
+                            color: AppTheme.primary.withValues(alpha: 0.35),
                             blurRadius: 24,
                             offset: const Offset(0, 8),
                           ),

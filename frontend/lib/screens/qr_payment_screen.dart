@@ -65,7 +65,7 @@ class _QrPaymentScreenState extends ConsumerState<QrPaymentScreen>
           title: const Text('Pay via QR', style: TextStyle(color: Colors.white)),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(width: 64, height: 64, decoration: BoxDecoration(
-              color: AppTheme.success.withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
+              color: AppTheme.success.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
               child: const Icon(Icons.qr_code_scanner_rounded, color: AppTheme.success, size: 32)),
             const SizedBox(height: 16),
             Text('Account: $acct', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
@@ -120,7 +120,7 @@ class _QrPaymentScreenState extends ConsumerState<QrPaymentScreen>
   Widget _buildMyQr() {
     if (_isLoading) return const Center(child: CircularProgressIndicator(color: AppTheme.accent));
     if (_qrData == null) return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Icon(Icons.qr_code_rounded, color: AppTheme.textSecondary.withOpacity(0.3), size: 80),
+      Icon(Icons.qr_code_rounded, color: AppTheme.textSecondary.withValues(alpha: 0.3), size: 80),
       const SizedBox(height: 16),
       Text(_error ?? 'Unable to generate QR', style: const TextStyle(color: AppTheme.textSecondary)),
     ]));
@@ -158,11 +158,11 @@ class _QrPaymentScreenState extends ConsumerState<QrPaymentScreen>
       Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(24), child: Stack(children: [
         MobileScanner(onDetect: _onQrDetected),
         Center(child: Container(width: 250, height: 250, decoration: BoxDecoration(
-          border: Border.all(color: AppTheme.accent.withOpacity(0.5), width: 2),
+          border: Border.all(color: AppTheme.accent.withValues(alpha: 0.5), width: 2),
           borderRadius: BorderRadius.circular(20)))),
         Positioned(bottom: 20, left: 0, right: 0, child: Center(child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(color: Colors.black.withOpacity(0.6), borderRadius: BorderRadius.circular(20)),
+          decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(20)),
           child: Text(_scanned ? '✅ QR Detected!' : 'Scanning...',
             style: TextStyle(color: _scanned ? AppTheme.success : Colors.white, fontSize: 13))))),
       ]))),

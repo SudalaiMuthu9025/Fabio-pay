@@ -286,10 +286,10 @@ class _LivenessScreenState extends State<LivenessScreen>
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.black.withOpacity(0.6),
+                  Colors.black.withValues(alpha: 0.6),
                   Colors.transparent,
                   Colors.transparent,
-                  Colors.black.withOpacity(0.8),
+                  Colors.black.withValues(alpha: 0.8),
                 ],
                 stops: const [0.0, 0.25, 0.7, 1.0],
               ),
@@ -310,7 +310,7 @@ class _LivenessScreenState extends State<LivenessScreen>
                         ? AppTheme.success
                         : _status == 'failed' || _status == 'timed_out'
                             ? AppTheme.error
-                            : AppTheme.accent.withOpacity(0.6),
+                            : AppTheme.accent.withValues(alpha: 0.6),
                     width: 3,
                   ),
                 ),
@@ -340,8 +340,8 @@ class _LivenessScreenState extends State<LivenessScreen>
                           horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
                         color: _remainingTime < 5
-                            ? AppTheme.error.withOpacity(0.3)
-                            : Colors.black.withOpacity(0.4),
+                            ? AppTheme.error.withValues(alpha: 0.3)
+                            : Colors.black.withValues(alpha: 0.4),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -400,11 +400,11 @@ class _LivenessScreenState extends State<LivenessScreen>
                                       : AppTheme.error)
                                   : i == _currentIndex
                                       ? AppTheme.accent
-                                      : Colors.white.withOpacity(0.3),
+                                      : Colors.white.withValues(alpha: 0.3),
                               boxShadow: i == _currentIndex
                                   ? [
                                       BoxShadow(
-                                        color: AppTheme.accent.withOpacity(0.5),
+                                        color: AppTheme.accent.withValues(alpha: 0.5),
                                         blurRadius: 8,
                                       ),
                                     ]
@@ -423,10 +423,10 @@ class _LivenessScreenState extends State<LivenessScreen>
                         padding: const EdgeInsets.symmetric(
                             horizontal: 28, vertical: 16),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
+                          color: Colors.black.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                              color: AppTheme.accent.withOpacity(0.3)),
+                              color: AppTheme.accent.withValues(alpha: 0.3)),
                         ),
                         child: Column(
                           children: [
@@ -468,7 +468,7 @@ class _LivenessScreenState extends State<LivenessScreen>
                       Text(
                         '💡 Sit 50-70cm from camera · Ensure good lighting',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
+                          color: Colors.white.withValues(alpha: 0.5),
                           fontSize: 11,
                         ),
                       ),

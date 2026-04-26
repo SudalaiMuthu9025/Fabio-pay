@@ -134,7 +134,7 @@ class _TransactionHistoryScreenState
                                   children: [
                                     Icon(Icons.receipt_long_rounded,
                                         color:
-                                            AppTheme.textSecondary.withOpacity(0.4),
+                                            AppTheme.textSecondary.withValues(alpha: 0.4),
                                         size: 64),
                                     const SizedBox(height: 16),
                                     Text(
@@ -210,7 +210,7 @@ class _FilterChip extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? chipColor.withOpacity(0.2) : Colors.white.withOpacity(0.06),
+          color: selected ? chipColor.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected ? chipColor : Colors.transparent,
@@ -255,7 +255,7 @@ class _TransactionCard extends StatelessWidget {
               height: 44,
               decoration: BoxDecoration(
                 color: (isCredit ? AppTheme.success : AppTheme.error)
-                    .withOpacity(0.15),
+                    .withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(
@@ -293,7 +293,7 @@ class _TransactionCard extends StatelessWidget {
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: (isCredit ? AppTheme.success : AppTheme.accent)
-                              .withOpacity(0.2),
+                              .withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -312,7 +312,7 @@ class _TransactionCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppTheme.textSecondary.withOpacity(0.15),
+                          color: AppTheme.textSecondary.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
@@ -343,7 +343,7 @@ class _TransactionCard extends StatelessWidget {
                     Text(
                       transaction.description!,
                       style: TextStyle(
-                        color: AppTheme.textSecondary.withOpacity(0.7),
+                        color: AppTheme.textSecondary.withValues(alpha: 0.7),
                         fontSize: 12,
                         fontStyle: FontStyle.italic,
                       ),
@@ -373,7 +373,7 @@ class _TransactionCard extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: (isSuccess ? AppTheme.success : AppTheme.error)
-                        .withOpacity(0.15),
+                        .withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(

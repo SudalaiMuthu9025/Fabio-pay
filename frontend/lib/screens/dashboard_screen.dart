@@ -203,7 +203,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppTheme.textSecondary.withOpacity(0.3),
+                    color: AppTheme.textSecondary.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -247,10 +247,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           decoration: BoxDecoration(
-                            color: AppTheme.success.withOpacity(0.1),
+                            color: AppTheme.success.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                                color: AppTheme.success.withOpacity(0.3)),
+                                color: AppTheme.success.withValues(alpha: 0.3)),
                           ),
                           child: Center(
                             child: Text(
@@ -472,8 +472,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                     horizontal: 12, vertical: 6),
                                 decoration: BoxDecoration(
                                   color: _balanceVisible
-                                      ? AppTheme.accent.withOpacity(0.15)
-                                      : Colors.white.withOpacity(0.06),
+                                      ? AppTheme.accent.withValues(alpha: 0.15)
+                                      : Colors.white.withValues(alpha: 0.06),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Row(
@@ -732,7 +732,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             children: [
                               Icon(Icons.receipt_long_rounded,
                                   color:
-                                      AppTheme.textSecondary.withOpacity(0.5),
+                                      AppTheme.textSecondary.withValues(alpha: 0.5),
                                   size: 48),
                               const SizedBox(height: 12),
                               Text('No transactions yet',
@@ -759,8 +759,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                   height: 42,
                                   decoration: BoxDecoration(
                                     color: txn.status == 'SUCCESS'
-                                        ? AppTheme.success.withOpacity(0.15)
-                                        : AppTheme.error.withOpacity(0.15),
+                                        ? AppTheme.success.withValues(alpha: 0.15)
+                                        : AppTheme.error.withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Center(
@@ -792,7 +792,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                                 horizontal: 6, vertical: 2),
                                             decoration: BoxDecoration(
                                               color: AppTheme.accent
-                                                  .withOpacity(0.1),
+                                                  .withValues(alpha: 0.1),
                                               borderRadius:
                                                   BorderRadius.circular(6),
                                             ),
@@ -837,7 +837,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                       txn.directionLabel,
                                       style: TextStyle(
                                         color: txn.isCredit
-                                            ? AppTheme.success.withOpacity(0.7)
+                                            ? AppTheme.success.withValues(alpha: 0.7)
                                             : AppTheme.textSecondary,
                                         fontSize: 10,
                                         fontWeight: FontWeight.w500,
@@ -885,9 +885,9 @@ class _SetupChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
+          color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.4)),
+          border: Border.all(color: color.withValues(alpha: 0.4)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -930,7 +930,7 @@ class _QuickAction extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withValues(alpha: 0.2),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),

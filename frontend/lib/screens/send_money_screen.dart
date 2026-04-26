@@ -235,7 +235,7 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
                                 gradient: LinearGradient(
                                   colors: [
                                     AppTheme.success,
-                                    AppTheme.success.withOpacity(0.7),
+                                    AppTheme.success.withValues(alpha: 0.7),
                                   ],
                                 ),
                                 shape: BoxShape.circle,
@@ -423,12 +423,12 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
                                         padding: const EdgeInsets.symmetric(
                                             vertical: 8),
                                         decoration: BoxDecoration(
-                                          color: AppTheme.accent.withOpacity(0.1),
+                                          color: AppTheme.accent.withValues(alpha: 0.1),
                                           borderRadius:
                                               BorderRadius.circular(10),
                                           border: Border.all(
                                             color:
-                                                AppTheme.accent.withOpacity(0.3),
+                                                AppTheme.accent.withValues(alpha: 0.3),
                                           ),
                                         ),
                                         child: Center(
@@ -496,10 +496,10 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: AppTheme.accent.withOpacity(0.08),
+                                color: AppTheme.accent.withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: AppTheme.accent.withOpacity(0.2),
+                                  color: AppTheme.accent.withValues(alpha: 0.2),
                                 ),
                               ),
                               child: Row(
@@ -511,7 +511,7 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
                                     child: Text(
                                       'Transactions ≥ ₹5,000 require face liveness verification for security.',
                                       style: TextStyle(
-                                        color: AppTheme.accent.withOpacity(0.9),
+                                        color: AppTheme.accent.withValues(alpha: 0.9),
                                         fontSize: 12,
                                       ),
                                     ),
@@ -525,7 +525,7 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
                               Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.error.withOpacity(0.1),
+                                  color: AppTheme.error.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Row(
@@ -579,7 +579,7 @@ class _SendMoneyScreenState extends ConsumerState<SendMoneyScreen>
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: AppTheme.accent.withOpacity(0.15),
+              color: AppTheme.accent.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Center(

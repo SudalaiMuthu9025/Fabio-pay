@@ -69,7 +69,7 @@ class _FabButtonState extends State<FabButton>
             boxShadow: widget.onPressed != null && !widget.isLoading
                 ? [
                     BoxShadow(
-                      color: AppTheme.primary.withOpacity(0.4),
+                      color: AppTheme.primary.withValues(alpha: 0.4),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
