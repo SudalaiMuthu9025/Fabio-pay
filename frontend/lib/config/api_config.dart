@@ -2,6 +2,9 @@
 ///
 /// Added: wsUrl() method required by liveness_screen.dart
 
+import 'dart:io';
+import '../services/dns_resolver.dart';
+
 class ApiConfig {
   ApiConfig._();
 
@@ -15,6 +18,34 @@ class ApiConfig {
         .replaceFirst('http://', 'ws://');
     return '$ws/ws/liveness?token=$token';
   }
+
+  /// WebSocket URL using DoH-resolved IP when system DNS fails
+  static Future<String> wsUrlResolved(String token) async {
+    final uri = Uri.parse(baseUrl);
+    final hostname = uri.host;
+
+    // Try system DNS first
+    try {
+      final addrs = await InternetAddress.lookup(hostname);
+      if (addrs.isNotEmpty) {
+        return wsUrl(token); // system DNS works, use normal URL
+      }
+    } catch (_) {}
+
+    // Resolve via DoH
+    final ip = await DnsResolver.resolve(hostname);
+    if (ip != null) {
+      final ws = baseUrl
+          .replaceFirst('https://', 'wss://')
+          .replaceFirst('http://', 'ws://')
+          .replaceFirst(hostname, ip);
+      return '$ws/ws/liveness?token=$token';
+    }
+
+    // Fallback to normal URL
+    return wsUrl(token);
+  }
+
 
   // ── Auth ─────────────────────────────────────────────────────────────
   static const String register   = '/auth/register';

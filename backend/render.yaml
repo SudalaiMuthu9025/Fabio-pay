@@ -1,0 +1,28 @@
+# Fabio Backend — Render Blueprint
+# Deploy via: https://render.com → New → Blueprint → Connect GitHub → Select Fabio-pay
+
+services:
+  - type: web
+    name: fabio-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRE_MINUTES
+        value: "1440"
+      - key: TRANSACTION_THRESHOLD
+        value: "5000"
+      - key: FACE_MATCH_THRESHOLD
+        value: "0.35"
+      - key: DEBUG
+        value: "false"
+      - key: ALLOWED_ORIGINS
+        value: "*"
